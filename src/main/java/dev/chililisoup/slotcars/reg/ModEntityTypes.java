@@ -13,7 +13,7 @@ import net.minecraft.world.entity.MobCategory;
 public class ModEntityTypes {
     public static final EntityType<SlotCar> SLOT_CAR = register(
             "slot_car",
-            EntityType.Builder.<SlotCar>of(SlotCar::new, MobCategory.MISC)
+            EntityType.Builder.of(SlotCar::new, MobCategory.MISC)
                     .noLootTable()
                     .noSave()
                     .noSummon()

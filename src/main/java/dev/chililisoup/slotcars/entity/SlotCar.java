@@ -20,7 +20,6 @@ import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
@@ -214,13 +213,12 @@ public class SlotCar extends Entity implements TraceableEntity {
                     this.comeOffTrack();
                     this.applyGravity();
                 }
-
-                this.applyEffectsFromBlocks();
             }
 
             ClientPlayNetworking.send(ServerboundMoveSlotCarPacket.fromCar(this));
         }
 
+        this.applyEffectsFromBlocks();
         this.firstTick = false;
     }
 
@@ -261,15 +259,17 @@ public class SlotCar extends Entity implements TraceableEntity {
             speed = accelerate(speed);
             maintainedSpeed = Math.max(this.getMinPoweredSpeed(), maintainedSpeed);
 
-            double harshness = (1 - Math.abs(deltaMovement
-                    .multiply(1, 0, 1)
-                    .normalize()
-                    .dot(pathVector.multiply(1, 0, 1).normalize())
-            )) * speed;
+            Vec3 xzMotion = deltaMovement.multiply(1, 0, 1);
 
-            if (harshness > this.maxHarshness()) {
-                this.derail();
-                deltaMovement = deltaMovement.scale(0.75).add(0, 0.15, 0);
+            if (xzMotion.lengthSqr() > 0.1) {
+                double harshness = (1 - Math.abs(xzMotion.normalize()
+                        .dot(pathVector.multiply(1, 0, 1).normalize())
+                )) * speed;
+
+                if (harshness > this.maxHarshness()) {
+                    this.derail();
+                    deltaMovement = deltaMovement.scale(0.75).add(0, 0.15, 0);
+                }
             }
         } else {
             speed *= this.naturalSlowdown();
@@ -397,7 +397,7 @@ public class SlotCar extends Entity implements TraceableEntity {
     private void explode() {
         ParticleOptions particleOptions = ParticleTypes.EXPLOSION;
 
-        for (int i = 0; i < 3; i++) this.level().addParticle(
+        this.level().addParticle(
                 particleOptions,
                 this.getRandomX(1.0),
                 this.getRandomY() + 0.5,
