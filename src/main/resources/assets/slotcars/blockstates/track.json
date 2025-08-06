@@ -1,0 +1,41 @@
+{
+  "variants": {
+    "shape=ascending_east": {
+      "model": "slotcars:block/track_raised",
+      "y": 90
+    },
+    "shape=ascending_north": {
+      "model": "slotcars:block/track_raised"
+    },
+    "shape=ascending_south": {
+      "model": "slotcars:block/track_raised",
+      "y": 180
+    },
+    "shape=ascending_west": {
+      "model": "slotcars:block/track_raised",
+      "y": 270
+    },
+    "shape=east_west": {
+      "model": "slotcars:block/track",
+      "y": 90
+    },
+    "shape=north_east": {
+      "model": "slotcars:block/track_corner",
+      "y": 270
+    },
+    "shape=north_south": {
+      "model": "slotcars:block/track"
+    },
+    "shape=north_west": {
+      "model": "slotcars:block/track_corner",
+      "y": 180
+    },
+    "shape=south_east": {
+      "model": "slotcars:block/track_corner"
+    },
+    "shape=south_west": {
+      "model": "slotcars:block/track_corner",
+      "y": 90
+    }
+  }
+}

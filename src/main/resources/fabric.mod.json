@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "slotcars",
+  "version": "${version}",
+  "name": "SlotCars",
+  "description": "Slot Cars (Made for ModFest: Toybox)",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/slotcars/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "dev.chililisoup.slotcars.client.SlotCarsClient"
+    ],
+    "main": [
+      "dev.chililisoup.slotcars.SlotCars"
+    ]
+  },
+  "mixins": [
+    "slotcars.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
