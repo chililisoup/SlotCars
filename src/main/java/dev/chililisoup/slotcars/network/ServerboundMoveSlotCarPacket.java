@@ -5,18 +5,16 @@ import dev.chililisoup.slotcars.entity.SlotCar;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.PacketUtils;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 @SuppressWarnings("UnstableApiUsage")
-public record ServerboundMoveSlotCarPacket(Vec3 position, float yRot, float xRot, boolean onGround) implements CustomPacketPayload {
+public record ServerboundMoveSlotCarPacket(Vec3 position, float yRot, float xRot, boolean onGround, int respawnTimer) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<ServerboundMoveSlotCarPacket> TYPE = new CustomPacketPayload.Type<>(
             SlotCars.loc("move_slot_car")
     );
@@ -29,6 +27,8 @@ public record ServerboundMoveSlotCarPacket(Vec3 position, float yRot, float xRot
             ServerboundMoveSlotCarPacket::xRot,
             ByteBufCodecs.BOOL,
             ServerboundMoveSlotCarPacket::onGround,
+            ByteBufCodecs.INT,
+            ServerboundMoveSlotCarPacket::respawnTimer,
             ServerboundMoveSlotCarPacket::new
     );
 
@@ -53,16 +53,22 @@ public record ServerboundMoveSlotCarPacket(Vec3 position, float yRot, float xRot
             car.setYRot(packet.yRot);
             car.setXRot(packet.xRot);
             car.setOnGround(packet.onGround);
+
+            car.setInvisible(packet.respawnTimer > 0);
+            if (packet.respawnTimer == SlotCar.respawnLength()) {
+                context.player().level().broadcastEntityEvent(car, (byte)40);
+                car.playSound(SoundEvents.GENERIC_EXPLODE.value(), 0.25F, 1.25F);
+            }
         });
     }
 
-    public static ServerboundMoveSlotCarPacket fromEntity(Entity entity) {
-        return entity.isInterpolating() ?
+    public static ServerboundMoveSlotCarPacket fromCar(SlotCar car) {
+        return car.isInterpolating() ?
                 new ServerboundMoveSlotCarPacket(
-                        entity.getInterpolation().position(), entity.getInterpolation().yRot(), entity.getInterpolation().xRot(), entity.onGround()
+                        car.getInterpolation().position(), car.getInterpolation().yRot(), car.getInterpolation().xRot(), car.onGround(), car.getRespawnTimer()
                 ) :
                 new ServerboundMoveSlotCarPacket(
-                        entity.position(), entity.getYRot(), entity.getXRot(), entity.onGround()
+                        car.position(), car.getYRot(), car.getXRot(), car.onGround(), car.getRespawnTimer()
                 );
     }
 }

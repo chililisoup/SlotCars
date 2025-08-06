@@ -12,12 +12,15 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
@@ -41,8 +44,11 @@ public class SlotCar extends Entity implements TraceableEntity {
     private final InterpolationHandler interpolationHandler = new InterpolationHandler(this);
     protected @Nullable EntityReference<Player> owner;
     private @Nullable Pair<BlockPos, Vec3[]> currentTrack;
-    private boolean onTrack;
+    private @Nullable Pair<BlockPos, Vec3[]> respawnTrack;
+    private @Nullable Vec3 respawnPoint;
+    private int respawnTimer = -5;
     private boolean backwards = false;
+    private boolean derailed = false;
 
     public SlotCar(EntityType<? extends SlotCar> entityType, Level level) {
         super(entityType, level);
@@ -122,6 +128,37 @@ public class SlotCar extends Entity implements TraceableEntity {
         return player != null && player.isClientAuthoritative();
     }
 
+    private void derail() {
+        this.derailed = true;
+        this.respawnPoint = this.position();
+        this.setCurrentTrack(null);
+    }
+
+    private void respawn() {
+        this.derailed = false;
+        this.backwards = false;
+
+        if (this.respawnPoint != null)
+            this.setPos(this.respawnPoint);
+
+        this.reapplyPosition();
+        this.setCurrentTrack(this.respawnTrack);
+        this.setDeltaMovement(Vec3.ZERO);
+    }
+
+    public int getRespawnTimer() {
+        return this.respawnTimer;
+    }
+
+    public static int respawnLength() {
+        return 30;
+    }
+
+    private void setCurrentTrack(@Nullable Pair<BlockPos, Vec3[]> track) {
+        this.currentTrack = track;
+        if (track != null) this.respawnTrack = track;
+    }
+
     @Override
     public void tick() {
         Player player = this.getOwner();
@@ -136,35 +173,52 @@ public class SlotCar extends Entity implements TraceableEntity {
         this.getInterpolation().interpolate();
 
         if (this.getOwner().isLocalPlayer()) {
-            if (this.currentTrack == null) {
-                BlockPos blockPos = this.getCurrentBlockPos();
-                BlockState blockState = this.level().getBlockState(blockPos);
-                this.onTrack = AbstractTrackBlock.isTrack(blockState);
+            if (!this.derailed) {
+                if (this.currentTrack == null) {
+                    BlockPos blockPos = this.getCurrentBlockPos();
+                    BlockState blockState = this.level().getBlockState(blockPos);
 
-                if (this.onTrack) this.currentTrack = Pair.of(
-                        blockPos,
-                        TrackBlock.getClosestPath(
-                                blockState,
-                                blockPos,
-                                this.position(),
-                                (this.firstTick ?
-                                        this.getLookAngle() :
-                                        (this.backwards ? this.getDeltaMovement().reverse() : this.getDeltaMovement())
-                                ).normalize()
-                        )
-                );
-            }
+                    if (AbstractTrackBlock.isTrack(blockState)) this.setCurrentTrack(Pair.of(
+                            blockPos,
+                            TrackBlock.getClosestPath(
+                                    blockState,
+                                    blockPos,
+                                    this.position(),
+                                    (this.firstTick ?
+                                            this.getLookAngle() :
+                                            (this.backwards ? this.getDeltaMovement().reverse() : this.getDeltaMovement())
+                                    ).normalize()
+                            )
+                    ));
 
-            if (this.onTrack) {
-                this.moveAlongTrack();
+                    if (!this.firstTick && this.currentTrack != null) {
+                        Pair<Vec3, Vec3> exits = TrackBlock.getPathExits(this.currentTrack, this.position());
+                        if (TrackBlock.distanceToPathSqr(exits.getFirst(), exits.getSecond(), this.position()) > 0.125) {
+                            this.setCurrentTrack(null);
+                        }
+                    }
+                } else if (!AbstractTrackBlock.isTrack(this.level().getBlockState(this.currentTrack.getFirst()))) {
+                    this.setCurrentTrack(null);
+                }
             } else {
-                this.comeOffTrack();
-                this.applyGravity();
+                if (this.respawnTimer > 0) this.respawnTimer--;
             }
 
-            this.applyEffectsFromBlocks();
+            if (this.respawnTimer <= 0 && this.respawnTimer > -5) {
+                respawn();
+                this.respawnTimer--;
+            } else {
+                if (this.currentTrack != null) {
+                    this.moveAlongTrack();
+                } else {
+                    this.comeOffTrack();
+                    this.applyGravity();
+                }
 
-            ClientPlayNetworking.send(ServerboundMoveSlotCarPacket.fromEntity(this));
+                this.applyEffectsFromBlocks();
+            }
+
+            ClientPlayNetworking.send(ServerboundMoveSlotCarPacket.fromCar(this));
         }
 
         this.firstTick = false;
@@ -179,40 +233,84 @@ public class SlotCar extends Entity implements TraceableEntity {
         this.resetFallDistance();
         this.applyGravity();
 
-        Pair<Vec3, Vec3> exits = TrackBlock.getPathExits(this.currentTrack, this.position());
+        Vec3 center = this.currentTrack.getFirst().getBottomCenter();
+        Vec3[] path = this.currentTrack.getSecond();
+        int exitsIndex = TrackBlock.closestOrderedPathPoint(path, this.position().subtract(center)).getFirst();
+
+        if (exitsIndex >= path.length - 1) {
+            Pair<BlockPos, Vec3[]> nextTrack = this.nextTrack();
+            if (nextTrack != null) {
+                this.setCurrentTrack(nextTrack);
+                center = this.currentTrack.getFirst().getBottomCenter();
+                path = this.currentTrack.getSecond();
+                exitsIndex = 0;
+            } else {
+                exitsIndex--;
+            }
+        }
+
+        Pair<Vec3, Vec3> exits = Pair.of(path[exitsIndex].add(center), path[exitsIndex + 1].add(center));
         Vec3 pathVector = exits.getSecond().subtract(exits.getFirst()).normalize();
         Vec3 deltaMovement = this.getDeltaMovement();
 
         double maintainedSpeed = deltaMovement.normalize().dot(pathVector);
-        double speed = deltaMovement.length() * this.naturalSlowdown();
+        double speed = deltaMovement.length();
+
         boolean powered = player.isUsingItem();
         if (powered) {
-            speed = Math.min(speed * 1.05 + 0.05, this.getMaxSpeed());
-            maintainedSpeed = Math.max(0.05, maintainedSpeed);
-        }
-        this.backwards = maintainedSpeed < 0;
+            speed = accelerate(speed);
+            maintainedSpeed = Math.max(this.getMinPoweredSpeed(), maintainedSpeed);
 
-        deltaMovement = pathVector.scale(speed * maintainedSpeed);
+            double harshness = (1 - Math.abs(deltaMovement
+                    .multiply(1, 0, 1)
+                    .normalize()
+                    .dot(pathVector.multiply(1, 0, 1).normalize())
+            )) * speed;
+
+            if (harshness > this.maxHarshness()) {
+                this.derail();
+                deltaMovement = deltaMovement.scale(0.75).add(0, 0.15, 0);
+            }
+        } else {
+            speed *= this.naturalSlowdown();
+        }
+
+        if (!this.derailed) {
+            deltaMovement = pathVector.scale(speed * maintainedSpeed);
+            this.backwards = maintainedSpeed < 0;
+        }
 
         Vec3 endPos = this.position().add(deltaMovement);
-        BlockPos endBlock = BlockPos.containing(endPos);
-        if (endBlock.getX() != this.currentTrack.getFirst().getX() || endBlock.getZ() != this.currentTrack.getFirst().getZ())
-            this.currentTrack = this.nextTrack();
-
         if (this.currentTrack != null) {
-            exits = TrackBlock.getPathExits(this.currentTrack, endPos);
-            pathVector = exits.getSecond().subtract(exits.getFirst()).normalize();
+            BlockPos endBlock = BlockPos.containing(endPos);
+            BlockPos currentBlock = this.currentTrack.getFirst();
+            if (endBlock.getX() != currentBlock.getX() || endBlock.getZ() != currentBlock.getZ()) {
+                this.setCurrentTrack(this.nextTrack());
+
+                if (this.currentTrack != null) {
+                    currentBlock = this.currentTrack.getFirst();
+                    if (endBlock.getX() != currentBlock.getX() || endBlock.getZ() != currentBlock.getZ())
+                        this.setCurrentTrack(null);
+                }
+            }
+
+            if (this.currentTrack != null) {
+                exits = TrackBlock.getPathExits(this.currentTrack, endPos);
+                pathVector = exits.getSecond().subtract(exits.getFirst()).normalize();
+            }
         }
 
-        Vec3 AP = this.position().add(deltaMovement).subtract(exits.getFirst());
-        Vec3 AB = exits.getSecond().subtract(exits.getFirst());
-        Vec3 alignedPos = exits.getFirst().add(AB.scale(AP.dot(AB) / AB.dot(AB)));
-
-        deltaMovement = alignedPos.subtract(this.position());
+        Vec3 totalDeltaMovement = this.currentTrack == null ?
+                endPos.subtract(this.position()) :
+                TrackBlock.closestPointToPath(
+                        exits.getFirst(),
+                        exits.getSecond(),
+                        endPos
+                ).subtract(this.position());
 
         this.setLookVector(pathVector.lerp(this.getLookAngle().normalize(), 0.375));
+        this.move(MoverType.SELF, totalDeltaMovement);
         this.setDeltaMovement(deltaMovement);
-        this.move(MoverType.SELF, deltaMovement);
     }
 
     public void setLookVector(Vec3 vector) {
@@ -243,11 +341,26 @@ public class SlotCar extends Entity implements TraceableEntity {
         this.move(MoverType.SELF, this.getDeltaMovement());
 
         if (this.onGround()) {
-            this.setXRot(this.getXRot() / 2F);
+            this.setXRot(0);
         } else {
             this.setDeltaMovement(this.getDeltaMovement().scale(0.95));
             this.setXRot(Mth.lerp(0.1F, this.getXRot(), 45));
         }
+
+        if ((this.onGround() || this.horizontalCollision) && this.derailed && this.respawnTimer < 0)
+            this.respawnTimer = respawnLength();
+    }
+
+    public double maxHarshness() {
+        return 0.175;
+    }
+
+    public double accelerate(double speed) {
+        return Math.max(Math.min(speed * 1.075, this.getMaxSpeed()), this.getMinPoweredSpeed());
+    }
+
+    public double getMinPoweredSpeed() {
+        return this.isInWater() ? 0.075 : 0.15;
     }
 
     public double getMaxSpeed() {
@@ -273,6 +386,26 @@ public class SlotCar extends Entity implements TraceableEntity {
 
         this.discard();
         return true;
+    }
+
+    @Override
+    public void handleEntityEvent(byte b) {
+        if (b == 40) this.explode();
+        else super.handleEntityEvent(b);
+    }
+
+    private void explode() {
+        ParticleOptions particleOptions = ParticleTypes.EXPLOSION;
+
+        for (int i = 0; i < 3; i++) this.level().addParticle(
+                particleOptions,
+                this.getRandomX(1.0),
+                this.getRandomY() + 0.5,
+                this.getRandomZ(1.0),
+                this.random.nextGaussian() * 0.02,
+                this.random.nextGaussian() * 0.02,
+                this.random.nextGaussian() * 0.02
+        );
     }
 
     @Override
@@ -307,7 +440,7 @@ public class SlotCar extends Entity implements TraceableEntity {
 
     @Override
     protected double getDefaultGravity() {
-        return this.isInWater() ? 0.005 : 0.04;
+        return this.isInWater() ? 0.01 : 0.06;
     }
 
     @Override

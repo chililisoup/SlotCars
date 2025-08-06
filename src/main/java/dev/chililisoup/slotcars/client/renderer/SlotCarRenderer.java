@@ -27,7 +27,9 @@ public class SlotCarRenderer extends EntityRenderer<SlotCar, SlotCarRenderState>
     }
 
     public void render(SlotCarRenderState renderState, PoseStack poseStack, MultiBufferSource multiBufferSource, int i) {
+        if (renderState.invisible) return;
         super.render(renderState, poseStack, multiBufferSource, i);
+
         poseStack.pushPose();
 
         poseStack.mulPose(Axis.YP.rotationDegrees(180 - renderState.yRot));
@@ -45,6 +47,7 @@ public class SlotCarRenderer extends EntityRenderer<SlotCar, SlotCarRenderState>
     public void extractRenderState(SlotCar car, SlotCarRenderState renderState, float partialTick) {
         super.extractRenderState(car, renderState, partialTick);
 
+        renderState.invisible = car.isInvisible();
         renderState.xRot = car.getXRot(partialTick);
         renderState.yRot = car.getYRot(partialTick);
     }

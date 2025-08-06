@@ -145,13 +145,38 @@ public class TrackBlock extends AbstractTrackBlock {
         return reversed;
     }
 
+    public static Vec3 closestPointToPath(Vec3 pathStart, Vec3 pathEnd, Vec3 position) {
+        Vec3 point = position.subtract(pathStart);
+        Vec3 line = pathEnd.subtract(pathStart);
+        return pathStart.add(point.projectedOn(line));
+    }
+
+    public static double distanceToPathSqr(Vec3 pathStart, Vec3 pathEnd, Vec3 position) {
+        return closestPointToPath(pathStart, pathEnd, position).distanceToSqr(position);
+    }
+
+    public static Pair<Integer, Double> closestOrderedPathPoint(Vec3[] path, Vec3 position) {
+        int closestIndex = -1;
+        double closestDistance = Double.MAX_VALUE;
+
+        for (int i = 0; i < path.length - 1; i++) {
+            double distance = path[i].distanceToSqr(position);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestIndex = i;
+            }
+        }
+
+        return Pair.of(closestIndex, closestDistance);
+    }
+
     public static Pair<Integer, Double> closestPathPoint(Vec3[] path, Vec3 position) {
         int closestIndex = -1;
         double closestDistance = Double.MAX_VALUE;
 
         for (int i = 0; i < path.length - 1; i++) {
             Vec3 middle = path[i].add(path[i + 1]).scale(0.5);
-            double distance = middle.distanceTo(position);
+            double distance = middle.distanceToSqr(position);
             if (distance < closestDistance) {
                 closestDistance = distance;
                 closestIndex = i;
@@ -236,7 +261,7 @@ public class TrackBlock extends AbstractTrackBlock {
         return getNextTrack(level, currentTrack.getFirst(), localEndPoint, backwards);
     }
 
-    public static Pair<Vec3, Vec3> getPathExits(Pair<BlockPos, Vec3[]> track, Vec3 position) {
+    public static Pair<Vec3, Vec3> getPathExits(@NotNull Pair<BlockPos, Vec3[]> track, Vec3 position) {
         Vec3 center = track.getFirst().getBottomCenter();
         Vec3[] path = track.getSecond();
         int closestIndex = closestPathPoint(path, position.subtract(center)).getFirst();
