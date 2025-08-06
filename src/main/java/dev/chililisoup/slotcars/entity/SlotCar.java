@@ -3,7 +3,6 @@ package dev.chililisoup.slotcars.entity;
 import com.mojang.datafixers.util.Pair;
 import dev.chililisoup.slotcars.SlotCars;
 import dev.chililisoup.slotcars.block.AbstractTrackBlock;
-import dev.chililisoup.slotcars.block.TrackBlock;
 import dev.chililisoup.slotcars.network.ServerboundMoveSlotCarPacket;
 import dev.chililisoup.slotcars.reg.ModBlockTags;
 import dev.chililisoup.slotcars.reg.ModEntityTypes;
@@ -127,6 +126,10 @@ public class SlotCar extends Entity implements TraceableEntity {
         return player != null && player.isClientAuthoritative();
     }
 
+    public boolean isDerailed() {
+        return this.derailed;
+    }
+
     private void derail() {
         this.derailed = true;
         this.respawnPoint = this.position();
@@ -179,7 +182,7 @@ public class SlotCar extends Entity implements TraceableEntity {
 
                     if (AbstractTrackBlock.isTrack(blockState)) this.setCurrentTrack(Pair.of(
                             blockPos,
-                            TrackBlock.getClosestPath(
+                            AbstractTrackBlock.getClosestPath(
                                     blockState,
                                     blockPos,
                                     this.position(),
@@ -191,8 +194,8 @@ public class SlotCar extends Entity implements TraceableEntity {
                     ));
 
                     if (!this.firstTick && this.currentTrack != null) {
-                        Pair<Vec3, Vec3> exits = TrackBlock.getPathExits(this.currentTrack, this.position());
-                        if (TrackBlock.distanceToPathSqr(exits.getFirst(), exits.getSecond(), this.position()) > 0.125) {
+                        Pair<Vec3, Vec3> exits = AbstractTrackBlock.getPathExits(this.currentTrack, this.position());
+                        if (AbstractTrackBlock.distanceToPathSqr(exits.getFirst(), exits.getSecond(), this.position()) > 0.125) {
                             this.setCurrentTrack(null);
                         }
                     }
@@ -233,7 +236,7 @@ public class SlotCar extends Entity implements TraceableEntity {
 
         Vec3 center = this.currentTrack.getFirst().getBottomCenter();
         Vec3[] path = this.currentTrack.getSecond();
-        int exitsIndex = TrackBlock.closestOrderedPathPoint(path, this.position().subtract(center)).getFirst();
+        int exitsIndex = AbstractTrackBlock.closestOrderedPathPoint(path, this.position().subtract(center)).getFirst();
 
         if (exitsIndex >= path.length - 1) {
             Pair<BlockPos, Vec3[]> nextTrack = this.nextTrack();
@@ -295,14 +298,14 @@ public class SlotCar extends Entity implements TraceableEntity {
             }
 
             if (this.currentTrack != null) {
-                exits = TrackBlock.getPathExits(this.currentTrack, endPos);
+                exits = AbstractTrackBlock.getPathExits(this.currentTrack, endPos);
                 pathVector = exits.getSecond().subtract(exits.getFirst()).normalize();
             }
         }
 
         Vec3 totalDeltaMovement = this.currentTrack == null ?
                 endPos.subtract(this.position()) :
-                TrackBlock.closestPointToPath(
+                AbstractTrackBlock.closestPointToPath(
                         exits.getFirst(),
                         exits.getSecond(),
                         endPos
@@ -324,7 +327,7 @@ public class SlotCar extends Entity implements TraceableEntity {
 
     public @Nullable Pair<BlockPos, Vec3[]> nextTrack() {
         if (this.currentTrack == null) return null;
-        return TrackBlock.getNextTrack(this.level(), this.currentTrack, this.backwards);
+        return AbstractTrackBlock.getNextTrack(this.level(), this.currentTrack, this.backwards);
     }
 
     protected void comeOffTrack() {

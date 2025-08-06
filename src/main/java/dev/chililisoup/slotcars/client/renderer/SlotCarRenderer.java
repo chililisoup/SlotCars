@@ -34,6 +34,7 @@ public class SlotCarRenderer extends EntityRenderer<SlotCar, SlotCarRenderState>
 
         poseStack.mulPose(Axis.YP.rotationDegrees(180 - renderState.yRot));
         poseStack.mulPose(Axis.XP.rotationDegrees(-renderState.xRot));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(renderState.zRot));
         poseStack.translate(0.0F, 1.125F, 0.0F);
         poseStack.scale(-0.75F, -0.75F, 0.75F);
 
@@ -50,6 +51,7 @@ public class SlotCarRenderer extends EntityRenderer<SlotCar, SlotCarRenderState>
         renderState.invisible = car.isInvisible();
         renderState.xRot = car.getXRot(partialTick);
         renderState.yRot = car.getYRot(partialTick);
+        renderState.zRot = ((car.tickCount % 20 + partialTick) / 20F) * (car.isDerailed() ? 360 : 0);
     }
 
     @Override

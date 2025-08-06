@@ -9,4 +9,5 @@ public class SlotCarRenderState extends EntityRenderState {
     public boolean invisible;
     public float xRot;
     public float yRot;
+    public float zRot;
 }
