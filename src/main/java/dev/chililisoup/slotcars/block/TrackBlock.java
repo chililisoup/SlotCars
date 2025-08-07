@@ -2,17 +2,19 @@ package dev.chililisoup.slotcars.block;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.phys.Vec3;
@@ -25,6 +27,8 @@ import java.util.*;
 
 public class TrackBlock extends AbstractTrackBlock {
     public static final MapCodec<TrackBlock> CODEC = simpleCodec(TrackBlock::new);
+    public static final EnumProperty<RailShape> SHAPE = BlockStateProperties.RAIL_SHAPE;
+
     @Override
     public @NotNull MapCodec<TrackBlock> codec() {
         return CODEC;
@@ -84,85 +88,109 @@ public class TrackBlock extends AbstractTrackBlock {
         builder.add(SHAPE);
     }
 
-    private static final Map<RailShape, Pair<Vec3[], Vec3[]>> PATHS = Maps.newEnumMap(Util.make(() -> {
-        Pair<Vec3[], Vec3[]> straightNorth = Pair.of(
-                new Vec3[]{
-                        new Vec3(-0.15625, 0.1, 0.5),
-                        new Vec3(-0.15625, 0.1, -0.5)
-                },
-                new Vec3[]{
-                        new Vec3(0.15625, 0.1, 0.5),
-                        new Vec3(0.15625, 0.1, -0.5)
-                }
-        );
-        Pair<Vec3[], Vec3[]> slopeNorth = Pair.of(
-                new Vec3[]{
-                        new Vec3(-0.15625, 0.1, 0.5),
-                        new Vec3(-0.15625, 1.1, -0.5)
-                },
-                new Vec3[]{
-                        new Vec3(0.15625, 0.1, 0.5),
-                        new Vec3(0.15625, 1.1, -0.5)
-                }
-        );
-        Pair<Vec3[], Vec3[]> curveSouthEast = Pair.of(
-                new Vec3[]{
-                        new Vec3(-0.15625, 0.1, 0.5),
-                        new Vec3(-0.15, 0.1, 0.375),
-                        new Vec3(-0.0625, 0.1, 0.125),
-                        new Vec3(0.125, 0.1, -0.0625),
-                        new Vec3(0.375, 0.1, -0.15),
-                        new Vec3(0.5, 0.1, -0.15625)
-                },
-                new Vec3[]{
-                        new Vec3(0.15625, 0.1, 0.5),
-                        new Vec3(0.15, 0.1, 0.4),
-                        new Vec3(0.25, 0.1, 0.25),
-                        new Vec3(0.4, 0.1, 0.15),
-                        new Vec3(0.5, 0.1, 0.15625)
-                }
-        );
+    private static final Map<RailShape, Path[]> PATHS = Maps.newEnumMap(Util.make(() -> {
+        Vec3i north = Direction.NORTH.getUnitVec3i();
+        Vec3i east = Direction.EAST.getUnitVec3i();
+        Vec3i south = Direction.SOUTH.getUnitVec3i();
+
+        Path[] straightNorth = new Path[]{
+                new Path(
+                        new Vec3[]{
+                                new Vec3(-0.15625, 0.1, 0.5),
+                                new Vec3(-0.15625, 0.1, -0.5)
+                        },
+                        south,
+                        north
+                ),
+                new Path(
+                        new Vec3[]{
+                                new Vec3(0.15625, 0.1, 0.5),
+                                new Vec3(0.15625, 0.1, -0.5)
+                        },
+                        south,
+                        north
+                )
+        };
+        Path[] slopeNorth = new Path[]{
+                new Path(
+                        new Vec3[]{
+                                new Vec3(-0.15625, 0.1, 0.5),
+                                new Vec3(-0.15625, 1.1, -0.5)
+                        },
+                        south,
+                        north.above()
+                ),
+                new Path(
+                        new Vec3[]{
+                                new Vec3(0.15625, 0.1, 0.5),
+                                new Vec3(0.15625, 1.1, -0.5)
+                        },
+                        south,
+                        north.above()
+                )
+        };
+        Path[] curveSouthEast = new Path[]{
+                new Path(
+                        new Vec3[]{
+                                new Vec3(-0.15625, 0.1, 0.5),
+                                new Vec3(-0.15, 0.1, 0.375),
+                                new Vec3(-0.0625, 0.1, 0.125),
+                                new Vec3(0.125, 0.1, -0.0625),
+                                new Vec3(0.375, 0.1, -0.15),
+                                new Vec3(0.5, 0.1, -0.15625)
+                        },
+                        south,
+                        east
+                ),
+                new Path(
+                        new Vec3[]{
+                                new Vec3(0.15625, 0.1, 0.5),
+                                new Vec3(0.15, 0.1, 0.4),
+                                new Vec3(0.25, 0.1, 0.25),
+                                new Vec3(0.4, 0.1, 0.15),
+                                new Vec3(0.5, 0.1, 0.15625)
+                        },
+                        south,
+                        east
+                )
+        };
 
         return ImmutableMap.of(
                 RailShape.NORTH_SOUTH,
                 straightNorth,
                 RailShape.EAST_WEST,
-                rotatePath(straightNorth, 1),
+                rotatePaths(straightNorth, 1),
                 RailShape.ASCENDING_EAST,
-                rotatePath(slopeNorth, 1),
+                rotatePaths(slopeNorth, 1),
                 RailShape.ASCENDING_WEST,
-                rotatePath(slopeNorth, 3),
+                rotatePaths(slopeNorth, 3),
                 RailShape.ASCENDING_NORTH,
                 slopeNorth,
                 RailShape.ASCENDING_SOUTH,
-                rotatePath(slopeNorth, 2),
+                rotatePaths(slopeNorth, 2),
                 RailShape.SOUTH_EAST,
                 curveSouthEast,
                 RailShape.SOUTH_WEST,
-                rotatePath(curveSouthEast, 1),
+                rotatePaths(curveSouthEast, 1),
                 RailShape.NORTH_WEST,
-                rotatePath(curveSouthEast, 2),
+                rotatePaths(curveSouthEast, 2),
                 RailShape.NORTH_EAST,
-                rotatePath(curveSouthEast, 3)
+                rotatePaths(curveSouthEast, 3)
         );
     }));
 
     @Override
-    public Pair<Vec3[], Vec3[]> getPaths(BlockState blockState) {
+    public Path[] getPaths(BlockState blockState) {
         return PATHS.get(blockState.getValue(SHAPE));
     }
 
     public static List<BlockPos> getConnectingBlocks(BlockPos blockPos, RailShape railShape) {
-        Pair<Vec3[], Vec3[]> paths = PATHS.get(railShape);
-        Vec3[] first = paths.getFirst();
-        Vec3[] second = paths.getSecond();
-
         List<BlockPos> allFound = new ArrayList<>();
 
-        allFound.add(getNextBlockPos(blockPos, first[0]));
-        allFound.add(getNextBlockPos(blockPos, first[first.length - 1]));
-        allFound.add(getNextBlockPos(blockPos, second[0]));
-        allFound.add(getNextBlockPos(blockPos, second[second.length - 1]));
+        for (Path path : PATHS.get(railShape)) {
+            allFound.add(blockPos.offset(path.entrance()));
+            allFound.add(blockPos.offset(path.exit()));
+        }
 
         List<BlockPos> connections = new ArrayList<>();
         allFound.forEach(checkPos -> {

@@ -41,8 +41,8 @@ public class SlotCar extends Entity implements TraceableEntity {
 
     private final InterpolationHandler interpolationHandler = new InterpolationHandler(this);
     protected @Nullable EntityReference<Player> owner;
-    private @Nullable Pair<BlockPos, Vec3[]> currentTrack;
-    private @Nullable Pair<BlockPos, Vec3[]> respawnTrack;
+    private @Nullable Pair<BlockPos, AbstractTrackBlock.Path> currentTrack;
+    private @Nullable Pair<BlockPos, AbstractTrackBlock.Path> respawnTrack;
     private @Nullable Vec3 respawnPoint;
     private int respawnTimer = -5;
     private boolean backwards = false;
@@ -141,7 +141,7 @@ public class SlotCar extends Entity implements TraceableEntity {
         this.backwards = false;
 
         if (this.respawnPoint != null)
-            this.setPos(this.respawnPoint);
+            this.setPos(AbstractTrackBlock.closestPointToPath(this.respawnTrack, this.respawnPoint));
 
         this.reapplyPosition();
         this.setCurrentTrack(this.respawnTrack);
@@ -156,7 +156,7 @@ public class SlotCar extends Entity implements TraceableEntity {
         return 30;
     }
 
-    private void setCurrentTrack(@Nullable Pair<BlockPos, Vec3[]> track) {
+    private void setCurrentTrack(@Nullable Pair<BlockPos, AbstractTrackBlock.Path> track) {
         this.currentTrack = track;
         if (track != null) this.respawnTrack = track;
     }
@@ -211,7 +211,9 @@ public class SlotCar extends Entity implements TraceableEntity {
                 this.respawnTimer--;
             } else {
                 if (this.currentTrack != null) {
+                    this.noPhysics = true;
                     this.moveAlongTrack();
+                    this.noPhysics = false;
                 } else {
                     this.comeOffTrack();
                     this.applyGravity();
@@ -235,15 +237,15 @@ public class SlotCar extends Entity implements TraceableEntity {
         this.applyGravity();
 
         Vec3 center = this.currentTrack.getFirst().getBottomCenter();
-        Vec3[] path = this.currentTrack.getSecond();
+        Vec3[] path = this.currentTrack.getSecond().points();
         int exitsIndex = AbstractTrackBlock.closestOrderedPathPoint(path, this.position().subtract(center)).getFirst();
 
         if (exitsIndex >= path.length - 1) {
-            Pair<BlockPos, Vec3[]> nextTrack = this.nextTrack();
+            Pair<BlockPos, AbstractTrackBlock.Path> nextTrack = this.nextTrack();
             if (nextTrack != null) {
                 this.setCurrentTrack(nextTrack);
                 center = this.currentTrack.getFirst().getBottomCenter();
-                path = this.currentTrack.getSecond();
+                path = this.currentTrack.getSecond().points();
                 exitsIndex = 0;
             } else {
                 exitsIndex--;
@@ -263,11 +265,12 @@ public class SlotCar extends Entity implements TraceableEntity {
             maintainedSpeed = Math.max(this.getMinPoweredSpeed(), maintainedSpeed);
 
             Vec3 xzMotion = deltaMovement.multiply(1, 0, 1);
+            double xzLength = xzMotion.length();
 
-            if (xzMotion.lengthSqr() > 0.1) {
+            if (xzLength > 0.4) {
                 double harshness = (1 - Math.abs(xzMotion.normalize()
                         .dot(pathVector.multiply(1, 0, 1).normalize())
-                )) * accelerate(xzMotion.length());
+                )) * xzLength;
 
                 if (harshness > this.maxHarshness()) {
                     this.derail();
@@ -325,7 +328,7 @@ public class SlotCar extends Entity implements TraceableEntity {
         this.setYRot(Mth.wrapDegrees((float)(Mth.atan2(z, x) * 180.0F / (float)Math.PI) - 90.0F));
     }
 
-    public @Nullable Pair<BlockPos, Vec3[]> nextTrack() {
+    public @Nullable Pair<BlockPos, AbstractTrackBlock.Path> nextTrack() {
         if (this.currentTrack == null) return null;
         return AbstractTrackBlock.getNextTrack(this.level(), this.currentTrack, this.backwards);
     }
@@ -384,11 +387,16 @@ public class SlotCar extends Entity implements TraceableEntity {
     private boolean shouldDespawn(Player player) {
         boolean inMainHand = player.getMainHandItem().is(ModItems.CONTROLLER);
         boolean inOffhand = player.getOffhandItem().is(ModItems.CONTROLLER);
-        if (!player.isRemoved() && player.isAlive() && (inMainHand || inOffhand) && this.distanceToSqr(player) < 1024.0)
+        if (!player.isRemoved() && player.isAlive() && (inMainHand || inOffhand) && this.distanceToSqr(player) < 4096)
             return false;
 
         this.discard();
         return true;
+    }
+
+    @Override
+    public boolean shouldRenderAtSqrDistance(double d) {
+        return d < 4096;
     }
 
     @Override
@@ -409,12 +417,6 @@ public class SlotCar extends Entity implements TraceableEntity {
                 this.random.nextGaussian() * 0.02,
                 this.random.nextGaussian() * 0.02
         );
-    }
-
-    @Override
-    public boolean isAlwaysTicking() {
-        Player player = this.getOwner();
-        return player != null && player.isLocalPlayer();
     }
 
     @Override
@@ -461,6 +463,12 @@ public class SlotCar extends Entity implements TraceableEntity {
     @Override
     public boolean hurtServer(ServerLevel serverLevel, DamageSource damageSource, float f) {
         return false;
+    }
+
+    @Override
+    public boolean isAlwaysTicking() {
+        Player player = this.getOwner();
+        return player != null && player.isLocalPlayer();
     }
 
     @Override

@@ -1,7 +1,9 @@
 package dev.chililisoup.slotcars.reg;
 
 import dev.chililisoup.slotcars.SlotCars;
+import dev.chililisoup.slotcars.block.TIntersectionTrackBlock;
 import dev.chililisoup.slotcars.block.TrackBlock;
+import dev.chililisoup.slotcars.block.HalfRampTrackBlock;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -22,6 +24,8 @@ public class ModBlocks {
     public static final ArrayList<Block> CUTOUT_BLOCKS = new ArrayList<>();
 
     public static final Block TRACK = registerTrack("track", TrackBlock::new);
+    public static final Block T_INTERSECTION_TRACK = registerTrack("t_intersection_track", TIntersectionTrackBlock::new);
+    public static final Block HALF_RAMP_TRACK = registerTrack("half_ramp_track", HalfRampTrackBlock::new);
 
     private static Block register(
             String name,

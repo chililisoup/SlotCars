@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=east,half=bottom": {
+      "model": "slotcars:block/half_ramp_track_bottom",
+      "y": 90
+    },
+    "facing=north,half=bottom": {
+      "model": "slotcars:block/half_ramp_track_bottom"
+    },
+    "facing=south,half=bottom": {
+      "model": "slotcars:block/half_ramp_track_bottom",
+      "y": 180
+    },
+    "facing=west,half=bottom": {
+      "model": "slotcars:block/half_ramp_track_bottom",
+      "y": 270
+    },
+    "facing=east,half=top": {
+      "model": "slotcars:block/half_ramp_track_top",
+      "y": 90
+    },
+    "facing=north,half=top": {
+      "model": "slotcars:block/half_ramp_track_top"
+    },
+    "facing=south,half=top": {
+      "model": "slotcars:block/half_ramp_track_top",
+      "y": 180
+    },
+    "facing=west,half=top": {
+      "model": "slotcars:block/half_ramp_track_top",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "format_version": "1.21.6",
+  "credit": "Made with Blockbench",
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "#track"
+  },
+  "elements": [
+    {
+      "from": [0, 13, 0],
+      "to": [16, 13, 16],
+      "rotation": {
+        "origin": [8, 13, 8],
+        "axis": "x",
+        "angle": -26.5651,
+        "rescale": true
+      },
+      "color": 8,
+      "faces": {
+        "down": {"uv": [0, 16, 16,  0], "texture": "#track_bottom"},
+        "up": {"uv": [0,  0, 16, 16], "texture": "#track"}
+      }
+    }
+  ]
+}

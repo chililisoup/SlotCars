@@ -47,17 +47,17 @@ public class TrackState {
 
     private @Nullable TrackState getTrack(BlockPos blockPos) {
         BlockState blockState = this.level.getBlockState(blockPos);
-        if (AbstractTrackBlock.isTrack(blockState))
+        if (blockState.getBlock() instanceof TrackBlock)
             return new TrackState(this.level, blockPos, blockState);
 
         BlockPos checkPos = blockPos.above();
         blockState = this.level.getBlockState(checkPos);
-        if (AbstractTrackBlock.isTrack(blockState))
+        if (blockState.getBlock() instanceof TrackBlock)
             return new TrackState(this.level, checkPos, blockState);
 
         checkPos = blockPos.below();
         blockState = this.level.getBlockState(checkPos);
-        return AbstractTrackBlock.isTrack(blockState) ? new TrackState(this.level, checkPos, blockState) : null;
+        return blockState.getBlock() instanceof TrackBlock ? new TrackState(this.level, checkPos, blockState) : null;
     }
 
     private boolean connectsTo(TrackState trackState) {

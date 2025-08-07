@@ -4,21 +4,25 @@ import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.MapCodec;
 import dev.chililisoup.slotcars.reg.ModBlockTags;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
-import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
+
 public abstract class AbstractTrackBlock extends Block {
-    public static final EnumProperty<RailShape> SHAPE = BlockStateProperties.RAIL_SHAPE;
     protected static final VoxelShape SHAPE_FLAT = Block.column(16.0, 0.0, 2.0);
     protected static final VoxelShape SHAPE_SLOPE = Block.column(16.0, 0.0, 8.0);
+    protected static final VoxelShape SHAPE_SLOPE_TOP = Block.column(16.0, 8.0, 16.0);
+
+    protected AbstractTrackBlock(Properties properties) {
+        super(properties);
+    }
 
     public static boolean isTrack(Level level, BlockPos blockPos) {
         return isTrack(level.getBlockState(blockPos));
@@ -28,56 +32,55 @@ public abstract class AbstractTrackBlock extends Block {
         return blockState.is(ModBlockTags.TRACKS) && blockState.getBlock() instanceof AbstractTrackBlock;
     }
 
-    protected AbstractTrackBlock(Properties properties) {
-        super(properties);
-    }
-
     @Override
     protected abstract @NotNull MapCodec<? extends AbstractTrackBlock> codec();
 
-    public abstract Pair<Vec3[], Vec3[]> getPaths(BlockState blockState);
+    public abstract Path[] getPaths(BlockState blockState);
 
-    public static Pair<Vec3[], Vec3[]> rotatePath(Pair<Vec3[], Vec3[]> path, int clockwiseTurns) {
-        Vec3[] first = new Vec3[path.getFirst().length];
-        Vec3[] second = new Vec3[path.getSecond().length];
+    public static Path[] rotatePaths(Path[] paths, int clockwiseTurns) {
+        Path[] rotated = new Path[paths.length];
 
-        if (clockwiseTurns == 1) {
-            for (int i = 0; i < first.length; i++)
-                first[i] = path.getFirst()[i].rotateClockwise90();
+        for (int i = 0; i < paths.length; i++) {
+            Path path = paths[i];
+            Vec3[] points = path.points;
+            Vec3[] rotatedPoints = new Vec3[points.length];
+            Vec3i entrance = path.entrance;
+            Vec3i exit = path.exit;
 
-            for (int i = 0; i < second.length; i++)
-                second[i] = path.getSecond()[i].rotateClockwise90();
-        } else if (clockwiseTurns == 2) {
-            for (int i = 0; i < first.length; i++)
-                first[i] = path.getFirst()[i].multiply(-1, 1, -1);
+            if (clockwiseTurns == 1) {
+                entrance = new Vec3i(-entrance.getZ(), entrance.getY(), entrance.getX());
+                exit = new Vec3i(-exit.getZ(), exit.getY(), exit.getX());
+                for (int j = 0; j < points.length; j++)
+                    rotatedPoints[j] = points[j].rotateClockwise90();
+            } else if (clockwiseTurns == 2) {
+                entrance = new Vec3i(-entrance.getX(), entrance.getY(), -entrance.getZ());
+                exit = new Vec3i(-exit.getX(), exit.getY(), -exit.getZ());
+                for (int j = 0; j < points.length; j++)
+                    rotatedPoints[j] = points[j].multiply(-1, 1, -1);
+            } else if (clockwiseTurns == 3) {
+                entrance = new Vec3i(entrance.getZ(), entrance.getY(), -entrance.getX());
+                exit = new Vec3i(exit.getZ(), exit.getY(), -exit.getX());
+                for (int j = 0; j < points.length; j++)
+                    rotatedPoints[j] = points[j].rotateClockwise90().multiply(-1, 1, -1);
+            } else {
+                return paths;
+            }
 
-            for (int i = 0; i < second.length; i++)
-                second[i] = path.getSecond()[i].multiply(-1, 1, -1);
-        } else if (clockwiseTurns == 3) {
-            for (int i = 0; i < first.length; i++)
-                first[i] = path.getFirst()[i].rotateClockwise90().multiply(-1, 1, -1);
-
-            for (int i = 0; i < second.length; i++)
-                second[i] = path.getSecond()[i].rotateClockwise90().multiply(-1, 1, -1);
-        } else {
-            return path;
+            rotated[i] = new Path(rotatedPoints, entrance, exit);
         }
 
-        return Pair.of(first, second);
-    }
-
-    public static Vec3[] reversePath(Vec3[] path) {
-        Vec3[] reversed = new Vec3[path.length];
-        for (int i = 0; i < path.length; i++)
-            reversed[i] = path[path.length - 1 - i];
-
-        return reversed;
+        return rotated;
     }
 
     public static Vec3 closestPointToPath(Vec3 pathStart, Vec3 pathEnd, Vec3 position) {
         Vec3 point = position.subtract(pathStart);
         Vec3 line = pathEnd.subtract(pathStart);
         return pathStart.add(point.projectedOn(line));
+    }
+
+    public static Vec3 closestPointToPath(Pair<BlockPos, Path> currentTrack, Vec3 position) {
+        Pair<Vec3, Vec3> exits = AbstractTrackBlock.getPathExits(currentTrack, position);
+        return closestPointToPath(exits.getFirst(), exits.getSecond(), position);
     }
 
     public static double distanceToPathSqr(Vec3 pathStart, Vec3 pathEnd, Vec3 position) {
@@ -99,12 +102,12 @@ public abstract class AbstractTrackBlock extends Block {
         return Pair.of(closestIndex, closestDistance);
     }
 
-    public static Pair<Integer, Double> closestPathPoint(Vec3[] path, Vec3 position) {
+    public static Pair<Integer, Double> closestPathPoint(Path path, Vec3 position) {
         int closestIndex = -1;
         double closestDistance = Double.MAX_VALUE;
 
-        for (int i = 0; i < path.length - 1; i++) {
-            Vec3 middle = path[i].add(path[i + 1]).scale(0.5);
+        for (int i = 0; i < path.points.length - 1; i++) {
+            Vec3 middle = path.points[i].add(path.points[i + 1]).scale(0.5);
             double distance = middle.distanceToSqr(position);
             if (distance < closestDistance) {
                 closestDistance = distance;
@@ -115,85 +118,100 @@ public abstract class AbstractTrackBlock extends Block {
         return Pair.of(closestIndex, closestDistance);
     }
 
-    public static Vec3[] getClosestPath(BlockState blockState, BlockPos blockPos, Vec3 position, Vec3 direction) {
-        Pair<Vec3[], Vec3[]> paths = ((AbstractTrackBlock) blockState.getBlock()).getPaths(blockState);
-        Vec3[] first = paths.getFirst();
-        Vec3[] second = paths.getSecond();
-        Vec3 center = blockPos.getBottomCenter();
+    public static Path getClosestPath(BlockState blockState, BlockPos blockPos, Vec3 position, Vec3 direction) {
+        Path[] paths = ((AbstractTrackBlock) blockState.getBlock()).getPaths(blockState);
+        Vec3 relativePos = position.subtract(blockPos.getBottomCenter());
 
-        Pair<Integer, Double> closestFirst = closestPathPoint(first, position.subtract(center));
-        Pair<Integer, Double> closestSecond = closestPathPoint(second, position.subtract(center));
+        Pair<Integer, Double> closest = null;
+        Path closestPath = paths[0];
 
-        if (closestFirst.getSecond() < closestSecond.getSecond()) {
-            int index = closestFirst.getFirst();
-            Vec3 pathVector = first[index + 1].subtract(first[index]).normalize();
-            if (pathVector.dot(direction) < 0)
-                return reversePath(first);
-            return first;
+        for (Path path : paths) {
+            Pair<Integer, Double> pathDistance = closestPathPoint(path, relativePos);
+
+            if (closest == null || pathDistance.getSecond() < closest.getSecond()) {
+                closest = pathDistance;
+                closestPath = path;
+            }
         }
 
-        int index = closestSecond.getFirst();
-        Vec3 pathVector = second[index + 1].subtract(second[index]).normalize();
+        int index = closest.getFirst();
+        Vec3 pathVector = closestPath.points[index + 1].subtract(closestPath.points[index]).normalize();
         if (pathVector.dot(direction) < 0)
-            return reversePath(second);
-        return second;
+            return closestPath.reversed();
+        return closestPath;
     }
 
-    public static @Nullable Vec3[] getConnectingPath(BlockState blockState, Vec3 connectingPoint) {
-        Pair<Vec3[], Vec3[]> paths = ((AbstractTrackBlock) blockState.getBlock()).getPaths(blockState);
-        Vec3[] first = paths.getFirst();
-        Vec3[] second = paths.getSecond();
+    public static @Nullable Path getConnectingPath(BlockState blockState, Vec3 connectingPoint) {
+        Path[] paths = ((AbstractTrackBlock) blockState.getBlock()).getPaths(blockState);
 
-        if (first[0].subtract(connectingPoint).lengthSqr() < 0.0001)
-            return first;
-        if (first[first.length - 1].subtract(connectingPoint).lengthSqr() < 0.0001)
-            return reversePath(first);
-        if (second[0].subtract(connectingPoint).lengthSqr() < 0.0001)
-            return second;
-        if (second[second.length - 1].subtract(connectingPoint).lengthSqr() < 0.0001)
-            return reversePath(second);
+        for (Path path : paths) {
+            if (path.points[0].subtract(connectingPoint).lengthSqr() < 0.0001)
+                return path;
+            if (path.points[path.points.length - 1].subtract(connectingPoint).lengthSqr() < 0.0001)
+                return path.reversed();
+        }
 
         return null;
     }
 
-    public static BlockPos getNextBlockPos(BlockPos blockPos, Vec3 localEndPoint) {
-        Vec3 globalEndPoint = blockPos.getBottomCenter().add(localEndPoint);
-        Vec3 offset = localEndPoint.multiply(1, 0, 1);
-        BlockPos firstCheck = BlockPos.containing(globalEndPoint.add(offset));
-        BlockPos secondCheck = BlockPos.containing(globalEndPoint.subtract(offset));
-
-        return (firstCheck.getX() == blockPos.getX() && firstCheck.getZ() == blockPos.getZ()) ?
-                secondCheck : firstCheck;
-    }
-
-    public static @Nullable Pair<BlockPos, Vec3[]> getNextTrack(Level level, BlockPos blockPos, Vec3 localEndPoint, boolean backwards) {
-        BlockPos nextBlock = getNextBlockPos(blockPos, localEndPoint);
-
+    public static @Nullable Pair<BlockPos, Path> getTrack(Level level, BlockPos blockPos, Vec3 localStartPoint, boolean backwards) {
+        BlockPos nextBlock = blockPos;
+        Vec3 nextStartPoint = localStartPoint;
         BlockState blockState = level.getBlockState(nextBlock);
+
         if (!AbstractTrackBlock.isTrack(blockState)) {
             nextBlock = nextBlock.below();
+            nextStartPoint = nextStartPoint.add(0, 1, 0);
             blockState = level.getBlockState(nextBlock);
 
             if (!AbstractTrackBlock.isTrack(blockState)) return null;
         }
 
-        Vec3 localStartPoint = blockPos.getBottomCenter().add(localEndPoint).subtract(nextBlock.getBottomCenter());
-        Vec3[] connectingPath = getConnectingPath(blockState, localStartPoint);
+        Path connectingPath = getConnectingPath(blockState, nextStartPoint);
         if (connectingPath == null) return null;
 
-        return Pair.of(nextBlock, backwards ? reversePath(connectingPath) : connectingPath);
+        return Pair.of(nextBlock, backwards ? connectingPath.reversed() : connectingPath);
     }
 
-    public static @Nullable Pair<BlockPos, Vec3[]> getNextTrack(Level level, Pair<BlockPos, Vec3[]> currentTrack, boolean backwards) {
-        Vec3[] path = currentTrack.getSecond();
-        Vec3 localEndPoint = backwards ? path[0] : path[path.length - 1];
-        return getNextTrack(level, currentTrack.getFirst(), localEndPoint, backwards);
+    public static @Nullable Pair<BlockPos, Path> getNextTrack(Level level, Pair<BlockPos, Path> currentTrack, boolean backwards) {
+        Path path = currentTrack.getSecond();
+        Vec3 localEndPoint = backwards ? path.points[0] : path.points[path.points.length - 1];
+
+        BlockPos nextBlock = currentTrack.getFirst().offset(path.getExit(localEndPoint));
+        Vec3 localStartPoint = currentTrack.getFirst().getBottomCenter().add(localEndPoint).subtract(nextBlock.getBottomCenter());
+
+        return getTrack(level, nextBlock, localStartPoint, backwards);
     }
 
-    public static Pair<Vec3, Vec3> getPathExits(@NotNull Pair<BlockPos, Vec3[]> track, Vec3 position) {
+    public static Pair<Vec3, Vec3> getPathExits(@NotNull Pair<BlockPos, Path> track, Vec3 position) {
         Vec3 center = track.getFirst().getBottomCenter();
-        Vec3[] path = track.getSecond();
+        Path path = track.getSecond();
         int closestIndex = closestPathPoint(path, position.subtract(center)).getFirst();
-        return Pair.of(path[closestIndex].add(center), path[closestIndex + 1].add(center));
+        return Pair.of(path.points[closestIndex].add(center), path.points[closestIndex + 1].add(center));
+    }
+    
+    public record Path(Vec3[] points, Vec3i entrance, Vec3i exit) {
+        public static Path reversed(Path path) {
+            Vec3[] reversedPoints = new Vec3[path.points.length];
+            for (int i = 0; i < path.points.length; i++)
+                reversedPoints[i] = path.points[path.points.length - 1 - i];
+
+            return new Path(reversedPoints, path.exit, path.entrance);
+        }
+        
+        public Path reversed() {
+            return reversed(this);
+        }
+        
+        public Vec3i getExit(Vec3 localEndPoint) {
+            double entranceDistance = this.points[0].distanceToSqr(localEndPoint);
+            double exitDistance = this.points[this.points.length - 1].distanceToSqr(localEndPoint);
+            return entranceDistance < exitDistance ? this.entrance : this.exit;
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return String.format("%s -> %s [%s]", this.entrance, this.exit, Arrays.toString(this.points));
+        }
     }
 }

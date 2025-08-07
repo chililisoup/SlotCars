@@ -1,6 +1,13 @@
 {
   "itemGroup.slotCars": "Slot Cars",
+  "item.slotcars.controller": "Slot Car Controller",
+
   "block.slotcars.track": "Slot Car Track",
   "item.slotcars.track": "Slot Car Track",
-  "item.slotcars.controller": "Slot Car Controller"
+  "block.slotcars.t_intersection_track": "Slot Car T Intersection Track",
+  "item.slotcars.t_intersection_track": "Slot Car T Intersection Track",
+  "block.slotcars.double_corner_track": "Slot Car Double Corner Track",
+  "item.slotcars.double_corner_track": "Slot Car Double Corner Track",
+  "block.slotcars.half_ramp_track": "Slot Car Half Ramp Track",
+  "item.slotcars.half_ramp_track": "Slot Car Half Ramp Track"
 }

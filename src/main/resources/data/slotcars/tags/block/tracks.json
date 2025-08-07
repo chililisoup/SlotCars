@@ -1,5 +1,7 @@
 {
   "values": [
-    "slotcars:track"
+    "slotcars:track",
+    "slotcars:t_intersection_track",
+    "slotcars:half_ramp_track"
   ]
 }
