@@ -267,7 +267,7 @@ public class SlotCar extends Entity implements TraceableEntity {
             if (xzMotion.lengthSqr() > 0.1) {
                 double harshness = (1 - Math.abs(xzMotion.normalize()
                         .dot(pathVector.multiply(1, 0, 1).normalize())
-                )) * speed;
+                )) * accelerate(xzMotion.length());
 
                 if (harshness > this.maxHarshness()) {
                     this.derail();
@@ -412,6 +412,12 @@ public class SlotCar extends Entity implements TraceableEntity {
     }
 
     @Override
+    public boolean isAlwaysTicking() {
+        Player player = this.getOwner();
+        return player != null && player.isLocalPlayer();
+    }
+
+    @Override
     public void restoreFrom(Entity entity) {
         super.restoreFrom(entity);
         if (entity instanceof SlotCar car) {
@@ -443,7 +449,7 @@ public class SlotCar extends Entity implements TraceableEntity {
 
     @Override
     protected double getDefaultGravity() {
-        return this.isInWater() ? 0.01 : 0.06;
+        return this.isInWater() ? 0.005 : 0.04;
     }
 
     @Override
