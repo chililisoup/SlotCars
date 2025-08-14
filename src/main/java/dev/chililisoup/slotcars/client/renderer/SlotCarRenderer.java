@@ -1,7 +1,6 @@
 package dev.chililisoup.slotcars.client.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import dev.chililisoup.slotcars.SlotCars;
 import dev.chililisoup.slotcars.client.model.SlotCarModel;
@@ -18,7 +17,8 @@ import org.jetbrains.annotations.NotNull;
 
 @Environment(EnvType.CLIENT)
 public class SlotCarRenderer extends EntityRenderer<SlotCar, SlotCarRenderState> {
-    private static final ResourceLocation MINECART_LOCATION = SlotCars.loc("textures/entity/slot_car.png");
+    private static final ResourceLocation TEXTURE_LOCATION = SlotCars.loc("textures/entity/slot_car.png");
+    private static final ResourceLocation OVERLAY_LOCATION = SlotCars.loc("textures/entity/slot_car_overlay.png");
     protected final SlotCarModel model;
 
     public SlotCarRenderer(EntityRendererProvider.Context context) {
@@ -26,9 +26,9 @@ public class SlotCarRenderer extends EntityRenderer<SlotCar, SlotCarRenderState>
         this.model = new SlotCarModel(context.bakeLayer(ModEntityRenderers.SLOT_CAR_MODEL));
     }
 
-    public void render(SlotCarRenderState renderState, PoseStack poseStack, MultiBufferSource multiBufferSource, int i) {
+    public void render(SlotCarRenderState renderState, PoseStack poseStack, MultiBufferSource multiBufferSource, int light) {
         if (renderState.invisible) return;
-        super.render(renderState, poseStack, multiBufferSource, i);
+        super.render(renderState, poseStack, multiBufferSource, light);
 
         poseStack.pushPose();
 
@@ -39,8 +39,20 @@ public class SlotCarRenderer extends EntityRenderer<SlotCar, SlotCarRenderState>
         poseStack.scale(-0.75F, -0.75F, 0.75F);
 
         this.model.setupAnim(renderState);
-        VertexConsumer vertexConsumer = multiBufferSource.getBuffer(this.model.renderType(MINECART_LOCATION));
-        this.model.renderToBuffer(poseStack, vertexConsumer, i, OverlayTexture.NO_OVERLAY);
+        this.model.renderToBuffer(
+                poseStack,
+                multiBufferSource.getBuffer(this.model.renderType(TEXTURE_LOCATION)),
+                light,
+                OverlayTexture.NO_OVERLAY,
+                renderState.color
+        );
+        this.model.renderToBuffer(
+                poseStack,
+                multiBufferSource.getBuffer(this.model.renderType(OVERLAY_LOCATION)),
+                light,
+                OverlayTexture.NO_OVERLAY
+        );
+
         poseStack.popPose();
     }
 
@@ -52,6 +64,7 @@ public class SlotCarRenderer extends EntityRenderer<SlotCar, SlotCarRenderState>
         renderState.xRot = car.getXRot(partialTick);
         renderState.yRot = car.getYRot(partialTick);
         renderState.zRot = ((car.tickCount % 20 + partialTick) / 20F) * (car.isDerailed() ? 360 : 0);
+        renderState.color = car.getColor();
     }
 
     @Override

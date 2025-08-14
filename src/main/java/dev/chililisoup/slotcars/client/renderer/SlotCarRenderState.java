@@ -10,4 +10,5 @@ public class SlotCarRenderState extends EntityRenderState {
     public float xRot;
     public float yRot;
     public float zRot;
+    public int color;
 }

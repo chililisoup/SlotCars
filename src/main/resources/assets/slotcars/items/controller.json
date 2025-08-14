@@ -1,6 +1,10 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "slotcars:item/controller"
+    "model": "slotcars:item/controller",
+    "tints": [{
+      "type": "minecraft:dye",
+      "default": -11430696
+    }]
   }
 }

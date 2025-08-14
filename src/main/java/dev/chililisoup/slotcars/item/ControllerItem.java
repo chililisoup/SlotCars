@@ -2,7 +2,6 @@ package dev.chililisoup.slotcars.item;
 
 import dev.chililisoup.slotcars.entity.SlotCar;
 import dev.chililisoup.slotcars.reg.ModBlockTags;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -37,6 +36,9 @@ public class ControllerItem extends Item {
         if (getCar(player) != null) return InteractionResult.PASS;
 
         Level level = useOnContext.getLevel();
+        if (!level.getBlockState(useOnContext.getClickedPos()).is(ModBlockTags.TRACKS))
+            return super.useOn(useOnContext);
+
         level.playSound(
                 null,
                 player.getX(),
@@ -48,10 +50,6 @@ public class ControllerItem extends Item {
                 0.4F / (level.getRandom().nextFloat() * 0.4F + 0.8F)
         );
         if (level instanceof ServerLevel serverLevel) {
-            BlockPos blockPos = useOnContext.getClickedPos();
-            if (!level.getBlockState(blockPos).is(ModBlockTags.TRACKS))
-                return InteractionResult.FAIL;
-
             SlotCar car = SlotCar.createSlotCar(
                     level,
                     useOnContext.getClickLocation(),

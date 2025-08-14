@@ -9,6 +9,7 @@
   "license": "MIT",
   "icon": "assets/slotcars/icon.png",
   "environment": "*",
+  "accessWidener": "slotcars.accesswidener",
   "entrypoints": {
     "client": [
       "dev.chililisoup.slotcars.client.SlotCarsClient"

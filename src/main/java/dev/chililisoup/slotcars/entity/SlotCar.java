@@ -11,11 +11,14 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
@@ -24,6 +27,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.DyedItemColor;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
@@ -38,6 +42,8 @@ public class SlotCar extends Entity implements TraceableEntity {
             SlotCars.loc("active_slot_car"),
             builder -> builder.initializer(SlotCarHolder::new).copyOnDeath()
     );
+    private static final EntityDataAccessor<Integer> DATA_COLOR = SynchedEntityData.defineId(SlotCar.class, EntityDataSerializers.INT);
+    private static final int DEFAULT_COLOR = -11430696;
 
     private final InterpolationHandler interpolationHandler = new InterpolationHandler(this);
     protected @Nullable EntityReference<Player> owner;
@@ -78,6 +84,7 @@ public class SlotCar extends Entity implements TraceableEntity {
             car.setOwner(player);
             car.setInitialPos(pos);
             car.setYRot(yRot);
+            car.setColor(itemStack.get(DataComponents.DYED_COLOR));
             EntityType.createDefaultStackConfig(level, itemStack, player).accept(car);
         }
 
@@ -124,6 +131,15 @@ public class SlotCar extends Entity implements TraceableEntity {
     public boolean isClientAuthoritative() {
         Player player = this.getOwner();
         return player != null && player.isClientAuthoritative();
+    }
+
+    private void setColor(@Nullable DyedItemColor color) {
+        if (color == null) return;
+        this.getEntityData().set(DATA_COLOR, color.rgb());
+    }
+
+    public int getColor() {
+        return this.getEntityData().get(DATA_COLOR);
     }
 
     public boolean isDerailed() {
@@ -478,7 +494,7 @@ public class SlotCar extends Entity implements TraceableEntity {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
-
+        builder.define(DATA_COLOR, DEFAULT_COLOR);
     }
 
     @Override

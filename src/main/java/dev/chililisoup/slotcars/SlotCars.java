@@ -21,5 +21,6 @@ public class SlotCars implements ModInitializer {
         ModItems.init();
         ModEntityTypes.init();
         ModPackets.init();
+        ModCauldronInteractions.init();
     }
 }
