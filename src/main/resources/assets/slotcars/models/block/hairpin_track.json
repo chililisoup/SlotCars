@@ -1,0 +1,7 @@
+{
+	"parent": "slotcars:block/template_track_flat",
+	"textures": {
+		"track": "slotcars:block/track_hairpin",
+		"track_bottom": "slotcars:block/track_hairpin_bottom"
+	}
+}

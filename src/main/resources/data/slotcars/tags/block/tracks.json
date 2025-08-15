@@ -2,6 +2,8 @@
   "values": [
     "slotcars:track",
     "slotcars:t_intersection_track",
+    "slotcars:double_corner_track",
+    "slotcars:hairpin_track",
     "slotcars:half_ramp_track"
   ]
 }

@@ -21,11 +21,11 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 
-public class TIntersectionTrackBlock extends AbstractTrackBlock {
-    public static final MapCodec<TIntersectionTrackBlock> CODEC = simpleCodec(TIntersectionTrackBlock::new);
+public class HairpinTrackBlock extends AbstractTrackBlock {
+    public static final MapCodec<HairpinTrackBlock> CODEC = simpleCodec(HairpinTrackBlock::new);
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
 
-    public TIntersectionTrackBlock(Properties properties) {
+    public HairpinTrackBlock(Properties properties) {
         super(properties);
         this.registerDefaultState(this.defaultBlockState().setValue(FACING, Direction.NORTH));
     }
@@ -51,52 +51,39 @@ public class TIntersectionTrackBlock extends AbstractTrackBlock {
     }
 
     private static final Map<Direction, Path[]> PATHS = Maps.newEnumMap(Util.make(() -> {
-        Vec3i north = Direction.NORTH.getUnitVec3i();
-        Vec3i east = Direction.EAST.getUnitVec3i();
         Vec3i south = Direction.SOUTH.getUnitVec3i();
 
-        Path[] westPaths = new Path[]{
+        Path[] northPath = new Path[]{
                 new Path(
                         new Vec3[]{
                                 new Vec3(-0.15625, 0.1, 0.5),
-                                new Vec3(-0.15625, 0.1, -0.5)
+                                new Vec3(-0.21875, 0.1, 0.28125),
+                                new Vec3(-0.25, 0.1, -0.03125),
+                                new Vec3(-0.25, 0.1, -0.15625),
+                                new Vec3(-0.125, 0.1, -0.25),
+
+                                new Vec3(0, 0.1, -0.28125),
+
+                                new Vec3(0.125, 0.1, -0.25),
+                                new Vec3(0.25, 0.1, -0.15625),
+                                new Vec3(0.25, 0.1, -0.03125),
+                                new Vec3(0.21875, 0.1, 0.28125),
+                                new Vec3(0.15625, 0.1, 0.5)
                         },
                         south,
-                        north
-                ),
-                new Path(
-                        new Vec3[]{
-                                new Vec3(0.15625, 0.1, 0.5),
-                                new Vec3(0.15, 0.1, 0.4),
-                                new Vec3(0.25, 0.1, 0.25),
-                                new Vec3(0.4, 0.1, 0.15),
-                                new Vec3(0.5, 0.1, 0.15625)
-                        },
-                        south,
-                        east
-                ),
-                new Path(
-                        new Vec3[]{
-                                new Vec3(0.5, 0.1, -0.15625),
-                                new Vec3(0.4, 0.1, -0.15),
-                                new Vec3(0.25, 0.1, -0.25),
-                                new Vec3(0.15, 0.1, -0.4),
-                                new Vec3(0.15625, 0.1, -0.5)
-                        },
-                        east,
-                        north
+                        south
                 )
         };
 
         return ImmutableMap.of(
                 Direction.EAST,
-                rotatePaths(westPaths, 2),
+                rotatePaths(northPath, 1),
                 Direction.WEST,
-                westPaths,
+                rotatePaths(northPath, 3),
                 Direction.NORTH,
-                rotatePaths(westPaths, 1),
+                northPath,
                 Direction.SOUTH,
-                rotatePaths(westPaths, 3)
+                rotatePaths(northPath, 2)
         );
     }));
 

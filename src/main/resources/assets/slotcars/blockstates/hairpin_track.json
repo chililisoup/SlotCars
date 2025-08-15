@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "slotcars:block/hairpin_track",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "slotcars:block/hairpin_track"
+    },
+    "facing=south": {
+      "model": "slotcars:block/hairpin_track",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "slotcars:block/hairpin_track",
+      "y": 270
+    }
+  }
+}

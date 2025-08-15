@@ -1,0 +1,11 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "slotcars:block/double_corner_track"
+    },
+    "axis=z": {
+      "model": "slotcars:block/double_corner_track",
+      "y": 90
+    }
+  }
+}

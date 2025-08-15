@@ -13,7 +13,7 @@ import net.minecraft.world.item.Item.Properties;
 import java.util.function.Function;
 
 public class ModItems {
-    public static Item CONTROLLER = register("controller", ControllerItem::new);
+    public static Item CONTROLLER = register("controller", ControllerItem::new, new Properties().stacksTo(1));
 
     private static Item register(
             String name,

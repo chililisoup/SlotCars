@@ -47,6 +47,7 @@ public class SlotCar extends Entity implements TraceableEntity {
     private static final double ACCELERATION = 0.9375;
     private static final double LN_ACCELERATION = Math.log(ACCELERATION);
     private static final double MAX_SPEED = 0.8;
+    private static final int MAX_TICK_ITERATIONS = 16;
 
     private final InterpolationHandler interpolationHandler = new InterpolationHandler(this);
     protected @Nullable EntityReference<Player> owner;
@@ -192,7 +193,7 @@ public class SlotCar extends Entity implements TraceableEntity {
             return;
         }
 
-        if (!this.level().isClientSide && this.shouldDespawn(player))
+        if (this.shouldDespawn(player))
             return;
 
         this.getInterpolation().interpolate();
@@ -283,9 +284,10 @@ public class SlotCar extends Entity implements TraceableEntity {
         double maintainedSpeed;
         Vec3 currentPos = this.position();
         double elapsedTick = 0;
+        int tickIterations = 0;
 
         boolean powered = player.isUsingItem();
-        while (elapsedTick < 1) {
+        while (elapsedTick < 1 && tickIterations++ < MAX_TICK_ITERATIONS) {
             double partialTick = 1.0 - elapsedTick;
 
             double distanceToExit = currentPos.distanceTo(exits.getSecond());
@@ -458,6 +460,8 @@ public class SlotCar extends Entity implements TraceableEntity {
     }
 
     private boolean shouldDespawn(Player player) {
+        if (this.level().isClientSide) return false;
+
         boolean inMainHand = player.getMainHandItem().is(ModItems.CONTROLLER);
         boolean inOffhand = player.getOffhandItem().is(ModItems.CONTROLLER);
         if (!player.isRemoved() && player.isAlive() && (inMainHand || inOffhand) && this.distanceToSqr(player) < 4096)
