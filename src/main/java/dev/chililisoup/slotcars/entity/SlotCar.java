@@ -179,6 +179,10 @@ public class SlotCar extends Entity implements TraceableEntity {
         this.currentTrack = track;
         if (track != null) this.respawnTrack = track;
     }
+    
+    public boolean onTrack() {
+        return this.currentTrack != null;
+    }
 
     @Override
     public void tick() {
@@ -229,7 +233,7 @@ public class SlotCar extends Entity implements TraceableEntity {
                 respawn();
                 this.respawnTimer--;
             } else {
-                if (this.currentTrack != null) {
+                if (this.onTrack()) {
                     this.noPhysics = true;
                     this.moveAlongTrack();
                     this.noPhysics = false;
@@ -276,7 +280,7 @@ public class SlotCar extends Entity implements TraceableEntity {
         Vec3 deltaMovement = this.getDeltaMovement();
 
         double speed = deltaMovement.length();
-        double maintainedSpeed = 1;
+        double maintainedSpeed;
         Vec3 currentPos = this.position();
         double elapsedTick = 0;
 
@@ -339,26 +343,26 @@ public class SlotCar extends Entity implements TraceableEntity {
         }
 
         Vec3 endPos = this.position().add(deltaMovement);
-        if (this.currentTrack != null) {
+        if (this.onTrack()) {
             BlockPos endBlock = BlockPos.containing(endPos);
             BlockPos currentBlock = this.currentTrack.getFirst();
             if (endBlock.getX() != currentBlock.getX() || endBlock.getZ() != currentBlock.getZ()) {
                 this.setCurrentTrack(this.nextTrack());
 
-                if (this.currentTrack != null) {
+                if (this.onTrack()) {
                     currentBlock = this.currentTrack.getFirst();
                     if (endBlock.getX() != currentBlock.getX() || endBlock.getZ() != currentBlock.getZ())
                         this.setCurrentTrack(null);
                 }
             }
 
-            if (this.currentTrack != null) {
+            if (this.onTrack()) {
                 exits = AbstractTrackBlock.getPathExits(this.currentTrack, endPos);
                 pathVector = exits.getSecond().subtract(exits.getFirst()).normalize();
             }
         }
 
-        Vec3 totalDeltaMovement = this.currentTrack == null ?
+        Vec3 totalDeltaMovement = !this.onTrack() ?
                 endPos.subtract(this.position()) :
                 AbstractTrackBlock.closestPointToPath(
                         exits.getFirst(),

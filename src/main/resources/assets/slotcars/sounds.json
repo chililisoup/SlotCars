@@ -1,0 +1,8 @@
+{
+  "entity.slot_car.travel": {
+    "subtitle": "subtitles.slotcars.entity.slot_car.travel",
+    "sounds": [
+      "slotcars:slot_car_travel"
+    ]
+  }
+}
