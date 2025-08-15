@@ -44,6 +44,9 @@ public class SlotCar extends Entity implements TraceableEntity {
     );
     private static final EntityDataAccessor<Integer> DATA_COLOR = SynchedEntityData.defineId(SlotCar.class, EntityDataSerializers.INT);
     private static final int DEFAULT_COLOR = -11430696;
+    private static final double ACCELERATION = 0.9375;
+    private static final double LN_ACCELERATION = Math.log(ACCELERATION);
+    private static final double MAX_SPEED = 0.8;
 
     private final InterpolationHandler interpolationHandler = new InterpolationHandler(this);
     protected @Nullable EntityReference<Player> owner;
@@ -272,33 +275,66 @@ public class SlotCar extends Entity implements TraceableEntity {
         Vec3 pathVector = exits.getSecond().subtract(exits.getFirst()).normalize();
         Vec3 deltaMovement = this.getDeltaMovement();
 
-        double maintainedSpeed = deltaMovement.normalize().dot(pathVector);
         double speed = deltaMovement.length();
+        double maintainedSpeed = 1;
+        Vec3 currentPos = this.position();
+        double elapsedTick = 0;
 
         boolean powered = player.isUsingItem();
-        if (powered) {
-            speed = accelerate(speed);
-            maintainedSpeed = Math.max(this.getMinPoweredSpeed(), maintainedSpeed);
+        while (elapsedTick < 1) {
+            double partialTick = 1.0 - elapsedTick;
 
-            Vec3 xzMotion = deltaMovement.multiply(1, 0, 1);
-            double xzLength = xzMotion.length();
-
-            if (xzLength > 0.4) {
-                double harshness = (1 - Math.abs(xzMotion.normalize()
-                        .dot(pathVector.multiply(1, 0, 1).normalize())
-                )) * xzLength;
-
-                if (harshness > this.maxHarshness()) {
-                    this.derail();
-                    deltaMovement = deltaMovement.scale(0.75).add(0, 0.15, 0);
+            double distanceToExit = currentPos.distanceTo(exits.getSecond());
+            if (distanceToExit < 0.001) {
+                if (exitsIndex >= path.length - 1) {
+                    Pair<BlockPos, AbstractTrackBlock.Path> nextTrack = this.nextTrack();
+                    if (nextTrack != null) {
+                        this.setCurrentTrack(nextTrack);
+                        center = this.currentTrack.getFirst().getBottomCenter();
+                        path = this.currentTrack.getSecond().points();
+                        exitsIndex = 0;
+                    } else {
+                        exitsIndex--;
+                    }
+                } else {
+                    exitsIndex = Math.min(exitsIndex + 1, path.length - 2);
                 }
-            }
-        } else {
-            speed *= this.naturalSlowdown();
-        }
 
-        if (!this.derailed) {
-            deltaMovement = pathVector.scale(speed * maintainedSpeed);
+                exits = Pair.of(path[exitsIndex].add(center), path[exitsIndex + 1].add(center));
+                pathVector = exits.getSecond().subtract(exits.getFirst()).normalize();
+                distanceToExit = currentPos.distanceTo(exits.getSecond());
+            }
+
+            maintainedSpeed = deltaMovement.normalize().dot(pathVector);
+            if (powered) {
+                Vec3 xzMotion = deltaMovement.multiply(1, 0, 1);
+                double xzLength = xzMotion.length();
+
+                if (xzLength > 0) {
+                    double harshness = (1 - Math.abs(xzMotion.normalize()
+                            .dot(pathVector.multiply(1, 0, 1).normalize())
+                    )) * xzLength;
+
+                    if (harshness > this.maxHarshness()) {
+                        this.derail();
+                        deltaMovement = deltaMovement.scale(0.75).add(0, 0.15, 0);
+                        break;
+                    }
+                }
+
+                maintainedSpeed = Math.max(getMinPoweredMaintainedSpeed(), maintainedSpeed);
+
+                double accelerationTicks = Math.min(accelerationTicks(speed * maintainedSpeed, distanceToExit), partialTick);
+                speed = accelerate(speed * maintainedSpeed, accelerationTicks);
+                elapsedTick += accelerationTicks;
+                currentPos = currentPos.add(pathVector.scale(speed * accelerationTicks));
+            } else {
+                speed *= 0.96 * maintainedSpeed;
+                currentPos = currentPos.add(pathVector.scale(speed * partialTick));
+                elapsedTick = 1;
+            }
+
+            deltaMovement = pathVector.scale(speed);
             this.backwards = maintainedSpeed < 0;
         }
 
@@ -350,11 +386,10 @@ public class SlotCar extends Entity implements TraceableEntity {
     }
 
     protected void comeOffTrack() {
-        double maxSpeed = this.getMaxSpeed();
         Vec3 deltaMovement = this.getDeltaMovement();
         this.setDeltaMovement(
-                Mth.clamp(deltaMovement.x, -maxSpeed, maxSpeed),
-                deltaMovement.y, Mth.clamp(deltaMovement.z, -maxSpeed, maxSpeed)
+                Mth.clamp(deltaMovement.x, -MAX_SPEED, MAX_SPEED),
+                deltaMovement.y, Mth.clamp(deltaMovement.z, -MAX_SPEED, MAX_SPEED)
         );
 
         if (this.onGround())
@@ -374,23 +409,41 @@ public class SlotCar extends Entity implements TraceableEntity {
     }
 
     public double maxHarshness() {
-        return 0.175;
+        return 0.2;
     }
 
-    public double accelerate(double speed) {
-        return Math.max(Math.min(speed * 1.075, this.getMaxSpeed()), this.getMinPoweredSpeed());
+    public static double accelerate(double speed, double partialTick) {
+        double curvePoint = accelerateInverse(speed);
+        return MAX_SPEED * (1.0 - (Math.pow(ACCELERATION, curvePoint + partialTick)));
     }
 
-    public double getMinPoweredSpeed() {
-        return this.isInWater() ? 0.075 : 0.15;
+    public static double accelerateInverse(double speed) {
+        return Math.log(1.0 - (speed / MAX_SPEED)) / LN_ACCELERATION;
     }
 
-    public double getMaxSpeed() {
-        return this.isInWater() ? 0.3 : 0.6;
+    public static double accelerationTicks(double currentSpeed, double distance) {
+        double mAToX = MAX_SPEED * Math.pow(ACCELERATION, currentSpeed);
+        double mLnA = MAX_SPEED * LN_ACCELERATION;
+        double dLnA = distance * LN_ACCELERATION;
+
+        double aToXOverLnA = Math.pow(ACCELERATION, currentSpeed) / LN_ACCELERATION;
+        double dOverM = distance / MAX_SPEED;
+
+        double mW = approxLambertW(-Math.pow(ACCELERATION, currentSpeed - aToXOverLnA + dOverM));
+
+        return -(mAToX + mW - dLnA) / mLnA;
     }
 
-    protected double naturalSlowdown() {
-        return this.isInWater() ? 0.95 : 0.96;
+    public static double approxLambertW(double x) {
+        double xSqr = x * x;
+        return Math.log(1 + x) * (
+                (0.0396202320 + 0.1961951280 * x + 0.1702729841 * xSqr) /
+                (0.0396188863 + 0.2161222712 * x + 0.2405866129 * xSqr)
+        );
+    }
+
+    public static double getMinPoweredMaintainedSpeed() {
+        return 0.15;
     }
 
     public BlockPos getCurrentBlockPos() {

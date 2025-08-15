@@ -7,14 +7,24 @@ import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CarvedPumpkinBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.Half;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -61,6 +71,22 @@ public class HalfRampTrackBlock extends AbstractTrackBlock {
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(HALF, FACING);
+    }
+
+    @Override
+    protected @NotNull InteractionResult useItemOn(
+            ItemStack itemStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand interactionHand, BlockHitResult blockHitResult
+    ) {
+        if (blockHitResult.getDirection() != Direction.UP || blockState.getValue(HALF) != Half.BOTTOM)
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
+
+        if (!(player.getItemInHand(interactionHand).getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof HalfRampTrackBlock))
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
+
+        if (!level.isClientSide)
+            level.setBlock(blockPos, blockState.setValue(HALF, Half.TOP), 11);
+
+        return InteractionResult.SUCCESS;
     }
 
     private static final Map<Direction, Path[]> BOTTOM_PATHS = Maps.newEnumMap(Util.make(() -> {
