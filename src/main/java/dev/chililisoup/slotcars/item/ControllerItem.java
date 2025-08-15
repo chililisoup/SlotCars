@@ -29,16 +29,7 @@ public class ControllerItem extends Item {
         return player.getAttachedOrElse(SlotCar.ACTIVE_SLOT_CAR, new SlotCar.SlotCarHolder()).get();
     }
 
-    @Override
-    public @NotNull InteractionResult useOn(UseOnContext useOnContext) {
-        Player player = useOnContext.getPlayer();
-        if (player == null) return InteractionResult.FAIL;
-        if (getCar(player) != null) return InteractionResult.PASS;
-
-        Level level = useOnContext.getLevel();
-        if (!level.getBlockState(useOnContext.getClickedPos()).is(ModBlockTags.TRACKS))
-            return super.useOn(useOnContext);
-
+    private void spawnCar(Level level, Player player, UseOnContext useOnContext) {
         level.playSound(
                 null,
                 player.getX(),
@@ -49,21 +40,42 @@ public class ControllerItem extends Item {
                 0.5F,
                 0.4F / (level.getRandom().nextFloat() * 0.4F + 0.8F)
         );
+
         if (level instanceof ServerLevel serverLevel) {
-            SlotCar car = SlotCar.createSlotCar(
+            serverLevel.addFreshEntity(SlotCar.createSlotCar(
                     level,
                     useOnContext.getClickLocation(),
                     player.getYHeadRot(),
                     EntitySpawnReason.DISPENSER,
                     useOnContext.getItemInHand(),
                     player
-            );
-            serverLevel.addFreshEntity(car);
+            ));
         }
 
         player.awardStat(Stats.ITEM_USED.get(this));
         player.gameEvent(GameEvent.ITEM_INTERACT_START);
+    }
 
+    @Override
+    public @NotNull InteractionResult useOn(UseOnContext useOnContext) {
+        Player player = useOnContext.getPlayer();
+        if (player == null) return InteractionResult.FAIL;
+
+        Level level = useOnContext.getLevel();
+        boolean clickedTrack = level.getBlockState(useOnContext.getClickedPos()).is(ModBlockTags.TRACKS);
+
+        SlotCar car;
+        if ((car = getCar(player)) != null) {
+            if (!clickedTrack || car.onTrack() || !car.onGround()) return InteractionResult.PASS;
+
+            car.discard();
+            this.spawnCar(level, player, useOnContext);
+            return InteractionResult.SUCCESS;
+        }
+
+        if (!clickedTrack) return super.useOn(useOnContext);
+
+        this.spawnCar(level, player, useOnContext);
         return InteractionResult.SUCCESS;
     }
 
