@@ -435,10 +435,6 @@ public class SlotCar extends Entity implements TraceableEntity {
         return Math.log(1.0 - (speed / MAX_SPEED)) / LN_ACCELERATION;
     }
 
-    public static double accelerationTicks(double currentSpeed, double distance) {
-        return distance / currentSpeed;
-    }
-
     public static double getMinPoweredMaintainedSpeed() {
         return 0.15;
     }
@@ -531,12 +527,6 @@ public class SlotCar extends Entity implements TraceableEntity {
     @Override
     public boolean hurtServer(ServerLevel serverLevel, DamageSource damageSource, float f) {
         return false;
-    }
-
-    @Override
-    public boolean isAlwaysTicking() {
-        Player player = this.getOwner();
-        return player != null && player.isLocalPlayer();
     }
 
     @Override

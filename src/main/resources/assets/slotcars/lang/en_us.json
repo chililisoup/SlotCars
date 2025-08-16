@@ -4,6 +4,8 @@
 
   "subtitles.slotcars.entity.slot_car.travel": "Slot car travels",
 
+  "entity.slotcars.slot_car": "Slot Car",
+
   "block.slotcars.track": "Slot Car Track",
   "item.slotcars.track": "Slot Car Track",
   "block.slotcars.t_intersection_track": "Slot Car T Intersection Track",
