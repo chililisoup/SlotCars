@@ -281,7 +281,7 @@ public class SlotCar extends Entity implements TraceableEntity {
         Vec3 deltaMovement = this.getDeltaMovement();
 
         double speed = deltaMovement.length();
-        double maintainedSpeed;
+        double maintainedSpeed = 1;
         Vec3 currentPos = this.position();
         double elapsedTick = 0;
         int tickIterations = 0;
@@ -292,7 +292,7 @@ public class SlotCar extends Entity implements TraceableEntity {
 
             double distanceToExit = currentPos.distanceTo(exits.getSecond());
             if (distanceToExit < 0.001) {
-                if (exitsIndex >= path.length - 1) {
+                if (exitsIndex >= path.length - 2) {
                     Pair<BlockPos, AbstractTrackBlock.Path> nextTrack = this.nextTrack();
                     if (nextTrack != null) {
                         this.setCurrentTrack(nextTrack);
@@ -300,10 +300,10 @@ public class SlotCar extends Entity implements TraceableEntity {
                         path = this.currentTrack.getSecond().points();
                         exitsIndex = 0;
                     } else {
-                        exitsIndex--;
+                        break;
                     }
                 } else {
-                    exitsIndex = Math.min(exitsIndex + 1, path.length - 2);
+                    exitsIndex++;
                 }
 
                 exits = Pair.of(path[exitsIndex].add(center), path[exitsIndex + 1].add(center));
@@ -324,13 +324,14 @@ public class SlotCar extends Entity implements TraceableEntity {
                     if (harshness > this.maxHarshness()) {
                         this.derail();
                         deltaMovement = deltaMovement.scale(0.75).add(0, 0.15, 0);
+                        currentPos = currentPos.add(deltaMovement);
+                        elapsedTick = 1;
                         break;
                     }
                 }
 
                 maintainedSpeed = Math.max(getMinPoweredMaintainedSpeed(), maintainedSpeed);
-
-                double accelerationTicks = Math.min(accelerationTicks(speed * maintainedSpeed, distanceToExit), partialTick);
+                double accelerationTicks = Math.min(distanceToExit / (speed * maintainedSpeed), partialTick);
                 speed = accelerate(speed * maintainedSpeed, accelerationTicks);
                 elapsedTick += accelerationTicks;
                 currentPos = currentPos.add(pathVector.scale(speed * accelerationTicks));
@@ -344,34 +345,39 @@ public class SlotCar extends Entity implements TraceableEntity {
             this.backwards = maintainedSpeed < 0;
         }
 
-        Vec3 endPos = this.position().add(deltaMovement);
+        if (elapsedTick < 1) {
+            currentPos = currentPos.add(pathVector.scale(speed * maintainedSpeed * (1 - elapsedTick)));
+        }
+
         if (this.onTrack()) {
-            BlockPos endBlock = BlockPos.containing(endPos);
+            BlockPos endBlock = BlockPos.containing(currentPos);
             BlockPos currentBlock = this.currentTrack.getFirst();
             if (endBlock.getX() != currentBlock.getX() || endBlock.getZ() != currentBlock.getZ()) {
-                this.setCurrentTrack(this.nextTrack());
+                Pair<BlockPos, AbstractTrackBlock.Path> nextTrack = this.nextTrack();
 
-                if (this.onTrack()) {
-                    currentBlock = this.currentTrack.getFirst();
-                    if (endBlock.getX() != currentBlock.getX() || endBlock.getZ() != currentBlock.getZ())
-                        this.setCurrentTrack(null);
-                }
+                if (nextTrack != null) {
+                    BlockPos nextBlock = nextTrack.getFirst();
+                    if (endBlock.getX() != nextBlock.getX() || endBlock.getZ() != nextBlock.getZ())
+                        this.derail();
+                    else this.setCurrentTrack(nextTrack);
+                } else this.setCurrentTrack(null);
             }
 
             if (this.onTrack()) {
-                exits = AbstractTrackBlock.getPathExits(this.currentTrack, endPos);
+                exits = AbstractTrackBlock.getPathExits(this.currentTrack, currentPos);
                 pathVector = exits.getSecond().subtract(exits.getFirst()).normalize();
             }
         }
 
         Vec3 totalDeltaMovement = !this.onTrack() ?
-                endPos.subtract(this.position()) :
+                currentPos.subtract(this.position()) :
                 AbstractTrackBlock.closestPointToPath(
                         exits.getFirst(),
                         exits.getSecond(),
-                        endPos
+                        currentPos
                 ).subtract(this.position());
 
+        if (!this.onTrack()) this.noPhysics = false;
         this.setLookVector(pathVector.lerp(this.getLookAngle().normalize(), 0.375));
         this.move(MoverType.SELF, totalDeltaMovement);
         this.setDeltaMovement(deltaMovement);
@@ -419,6 +425,8 @@ public class SlotCar extends Entity implements TraceableEntity {
     }
 
     public static double accelerate(double speed, double partialTick) {
+        if (speed >= MAX_SPEED * 0.99) return Math.max(speed, MAX_SPEED);
+
         double curvePoint = accelerateInverse(speed);
         return MAX_SPEED * (1.0 - (Math.pow(ACCELERATION, curvePoint + partialTick)));
     }
@@ -428,24 +436,7 @@ public class SlotCar extends Entity implements TraceableEntity {
     }
 
     public static double accelerationTicks(double currentSpeed, double distance) {
-        double mAToX = MAX_SPEED * Math.pow(ACCELERATION, currentSpeed);
-        double mLnA = MAX_SPEED * LN_ACCELERATION;
-        double dLnA = distance * LN_ACCELERATION;
-
-        double aToXOverLnA = Math.pow(ACCELERATION, currentSpeed) / LN_ACCELERATION;
-        double dOverM = distance / MAX_SPEED;
-
-        double mW = approxLambertW(-Math.pow(ACCELERATION, currentSpeed - aToXOverLnA + dOverM));
-
-        return -(mAToX + mW - dLnA) / mLnA;
-    }
-
-    public static double approxLambertW(double x) {
-        double xSqr = x * x;
-        return Math.log(1 + x) * (
-                (0.0396202320 + 0.1961951280 * x + 0.1702729841 * xSqr) /
-                (0.0396188863 + 0.2161222712 * x + 0.2405866129 * xSqr)
-        );
+        return distance / currentSpeed;
     }
 
     public static double getMinPoweredMaintainedSpeed() {
