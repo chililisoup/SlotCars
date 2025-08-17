@@ -14,7 +14,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 @SuppressWarnings("UnstableApiUsage")
-public record ServerboundMoveSlotCarPacket(Vec3 position, float yRot, float xRot, boolean onGround, int respawnTimer) implements CustomPacketPayload {
+public record ServerboundMoveSlotCarPacket(Vec3 position, float yRot, float xRot, boolean onGround, int respawnTimer, boolean derailed, boolean onTrack) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<ServerboundMoveSlotCarPacket> TYPE = new CustomPacketPayload.Type<>(
             SlotCars.loc("move_slot_car")
     );
@@ -29,6 +29,10 @@ public record ServerboundMoveSlotCarPacket(Vec3 position, float yRot, float xRot
             ServerboundMoveSlotCarPacket::onGround,
             ByteBufCodecs.INT,
             ServerboundMoveSlotCarPacket::respawnTimer,
+            ByteBufCodecs.BOOL,
+            ServerboundMoveSlotCarPacket::derailed,
+            ByteBufCodecs.BOOL,
+            ServerboundMoveSlotCarPacket::onTrack,
             ServerboundMoveSlotCarPacket::new
     );
 
@@ -53,6 +57,8 @@ public record ServerboundMoveSlotCarPacket(Vec3 position, float yRot, float xRot
             car.setYRot(packet.yRot);
             car.setXRot(packet.xRot);
             car.setOnGround(packet.onGround);
+            car.setDerailed(packet.derailed);
+            car.setOnTrack(packet.onTrack);
 
             car.setInvisible(packet.respawnTimer > 0);
             if (packet.respawnTimer == SlotCar.respawnLength()) {
@@ -63,12 +69,28 @@ public record ServerboundMoveSlotCarPacket(Vec3 position, float yRot, float xRot
     }
 
     public static ServerboundMoveSlotCarPacket fromCar(SlotCar car) {
-        return car.isInterpolating() ?
-                new ServerboundMoveSlotCarPacket(
-                        car.getInterpolation().position(), car.getInterpolation().yRot(), car.getInterpolation().xRot(), car.onGround(), car.getRespawnTimer()
-                ) :
-                new ServerboundMoveSlotCarPacket(
-                        car.position(), car.getYRot(), car.getXRot(), car.onGround(), car.getRespawnTimer()
-                );
+        Vec3 position;
+        float yRot;
+        float xRot;
+
+        if (car.isInterpolating()) {
+            position = car.getInterpolation().position();
+            yRot = car.getInterpolation().yRot();
+            xRot = car.getInterpolation().xRot();
+        } else {
+            position = car.position();
+            yRot = car.getYRot();
+            xRot = car.getXRot();
+        }
+
+        return new ServerboundMoveSlotCarPacket(
+                position,
+                yRot,
+                xRot,
+                car.onGround(),
+                car.getRespawnTimer(),
+                car.isDerailed(),
+                car.onTrack()
+        );
     }
 }

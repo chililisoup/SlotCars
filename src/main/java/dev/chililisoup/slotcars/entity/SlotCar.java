@@ -77,8 +77,8 @@ public class SlotCar extends Entity implements TraceableEntity {
     @Nullable
     public static SlotCar createSlotCar(
             Level level,
-            Vec3 pos,
-            float yRot,
+            Vec3 position,
+            Vec3 rotation,
             EntitySpawnReason entitySpawnReason,
             ItemStack itemStack,
             @Nullable Player player
@@ -86,8 +86,8 @@ public class SlotCar extends Entity implements TraceableEntity {
         SlotCar car = ModEntityTypes.SLOT_CAR.create(level, entitySpawnReason);
         if (car != null) {
             car.setOwner(player);
-            car.setInitialPos(pos);
-            car.setYRot(yRot);
+            car.setInitialPos(position);
+            car.setLookVector(rotation);
             car.setColor(itemStack.get(DataComponents.DYED_COLOR));
             EntityType.createDefaultStackConfig(level, itemStack, player).accept(car);
         }
@@ -150,10 +150,18 @@ public class SlotCar extends Entity implements TraceableEntity {
         return this.derailed;
     }
 
+    public boolean isCrashing() {
+        return this.derailed || this.respawnTimer > -5;
+    }
+
     private void derail() {
         this.derailed = true;
         this.respawnPoint = this.position();
         this.setCurrentTrack(null);
+    }
+
+    public void setDerailed(boolean derailed) {
+        this.derailed = derailed;
     }
 
     private void respawn() {
@@ -183,6 +191,10 @@ public class SlotCar extends Entity implements TraceableEntity {
     
     public boolean onTrack() {
         return this.currentTrack != null;
+    }
+
+    public void setOnTrack(boolean onTrack) {
+        this.currentTrack = onTrack ? AbstractTrackBlock.EMPTY_TRACK : null;
     }
 
     @Override

@@ -16,6 +16,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Arrays;
 
 public abstract class AbstractTrackBlock extends Block {
+    public static final Pair<BlockPos, Path> EMPTY_TRACK = Pair.of(BlockPos.ZERO, Path.EMPTY);
+
     protected static final VoxelShape SHAPE_FLAT = Block.column(16.0, 0.0, 2.0);
     protected static final VoxelShape SHAPE_SLOPE = Block.column(16.0, 0.0, 8.0);
     protected static final VoxelShape SHAPE_SLOPE_TOP = Block.column(16.0, 8.0, 16.0);
@@ -102,22 +104,6 @@ public abstract class AbstractTrackBlock extends Block {
         return Pair.of(closestIndex, closestDistance);
     }
 
-    public static Pair<Integer, Double> closestPathPoint(Path path, Vec3 position) {
-        int closestIndex = -1;
-        double closestDistance = Double.MAX_VALUE;
-
-        for (int i = 0; i < path.points.length - 1; i++) {
-            Vec3 middle = path.points[i].add(path.points[i + 1]).scale(0.5);
-            double distance = middle.distanceToSqr(position);
-            if (distance < closestDistance) {
-                closestDistance = distance;
-                closestIndex = i;
-            }
-        }
-
-        return Pair.of(closestIndex, closestDistance);
-    }
-
     public static Path getClosestPath(BlockState blockState, BlockPos blockPos, Vec3 position, Vec3 direction) {
         Path[] paths = ((AbstractTrackBlock) blockState.getBlock()).getPaths(blockState);
         Vec3 relativePos = position.subtract(blockPos.getBottomCenter());
@@ -126,7 +112,7 @@ public abstract class AbstractTrackBlock extends Block {
         Path closestPath = paths[0];
 
         for (Path path : paths) {
-            Pair<Integer, Double> pathDistance = closestPathPoint(path, relativePos);
+            Pair<Integer, Double> pathDistance = path.closestPoint(relativePos);
 
             if (closest == null || pathDistance.getSecond() < closest.getSecond()) {
                 closest = pathDistance;
@@ -186,11 +172,13 @@ public abstract class AbstractTrackBlock extends Block {
     public static Pair<Vec3, Vec3> getPathExits(@NotNull Pair<BlockPos, Path> track, Vec3 position) {
         Vec3 center = track.getFirst().getBottomCenter();
         Path path = track.getSecond();
-        int closestIndex = closestPathPoint(path, position.subtract(center)).getFirst();
+        int closestIndex = path.closestPoint(position.subtract(center)).getFirst();
         return Pair.of(path.points[closestIndex].add(center), path.points[closestIndex + 1].add(center));
     }
     
     public record Path(Vec3[] points, Vec3i entrance, Vec3i exit) {
+        public static final Path EMPTY = new Path(new Vec3[0], Vec3i.ZERO, Vec3i.ZERO);
+
         public static Path reversed(Path path) {
             Vec3[] reversedPoints = new Vec3[path.points.length];
             for (int i = 0; i < path.points.length; i++)
@@ -207,6 +195,22 @@ public abstract class AbstractTrackBlock extends Block {
             double entranceDistance = this.points[0].distanceToSqr(localEndPoint);
             double exitDistance = this.points[this.points.length - 1].distanceToSqr(localEndPoint);
             return entranceDistance < exitDistance ? this.entrance : this.exit;
+        }
+
+        public Pair<Integer, Double> closestPoint(Vec3 position) {
+            int closestIndex = -1;
+            double closestDistance = Double.MAX_VALUE;
+
+            for (int i = 0; i < this.points.length - 1; i++) {
+                Vec3 middle = this.points[i].add(this.points[i + 1]).scale(0.5);
+                double distance = middle.distanceToSqr(position);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestIndex = i;
+                }
+            }
+
+            return Pair.of(closestIndex, closestDistance);
         }
 
         @Override
