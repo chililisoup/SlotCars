@@ -26,7 +26,7 @@
     "slotcars.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=${loader_version}",
+    "fabricloader": ">=${min_loader_version}",
     "fabric": "*",
     "minecraft": "~${minecraft_version}"
   }
