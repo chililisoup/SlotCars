@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "slotcars:block/track_wide_corner",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "slotcars:block/track_wide_corner"
+    },
+    "facing=south": {
+      "model": "slotcars:block/track_wide_corner",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "slotcars:block/track_wide_corner",
+      "y": 270
+    }
+  }
+}

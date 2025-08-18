@@ -26,6 +26,12 @@ public class ModBlocks {
     public static final Block DOUBLE_CORNER_TRACK = registerTrack("double_corner_track", DoubleCornerTrackBlock::new);
     public static final Block HAIRPIN_TRACK = registerTrack("hairpin_track", HairpinTrackBlock::new);
     public static final Block HALF_RAMP_TRACK = registerTrack("half_ramp_track", HalfRampTrackBlock::new);
+    public static final Block LOOP_TRACK = registerTrack("loop_track", LoopTrackBlock::new);
+    public static final Block CHICANE_TRACK = registerTrack("chicane_track", ChicaneTrackBlock::new);
+    public static final Block FULL_CHICANE_TRACK = registerTrack("full_chicane_track", FullChicaneTrackBlock::new);
+    public static final Block SIDE_TRACK = registerTrack("side_track", SideTrackBlock::new);
+    public static final Block WIDE_CORNER_TRACK = registerTrack("wide_corner_track", WideCornerTrackBlock::new);
+    public static final Block TIGHT_CORNER_TRACK = registerTrack("tight_corner_track", TightCornerTrackBlock::new);
 
     private static Block register(
             String name,

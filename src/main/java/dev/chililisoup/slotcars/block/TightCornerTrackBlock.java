@@ -21,17 +21,17 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 
-public class TIntersectionTrackBlock extends AbstractTrackBlock {
-    public static final MapCodec<TIntersectionTrackBlock> CODEC = simpleCodec(TIntersectionTrackBlock::new);
+public class TightCornerTrackBlock extends AbstractTrackBlock {
+    public static final MapCodec<TightCornerTrackBlock> CODEC = simpleCodec(TightCornerTrackBlock::new);
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
 
-    public TIntersectionTrackBlock(Properties properties) {
+    public TightCornerTrackBlock(Properties properties) {
         super(properties);
         this.registerDefaultState(this.defaultBlockState().setValue(FACING, Direction.NORTH));
     }
 
     @Override
-    protected @NotNull MapCodec<TIntersectionTrackBlock> codec() {
+    protected @NotNull MapCodec<TightCornerTrackBlock> codec() {
         return CODEC;
     }
 
@@ -51,52 +51,45 @@ public class TIntersectionTrackBlock extends AbstractTrackBlock {
     }
 
     private static final Map<Direction, Path[]> PATHS = Maps.newEnumMap(Util.make(() -> {
-        Vec3i north = Direction.NORTH.getUnitVec3i();
         Vec3i east = Direction.EAST.getUnitVec3i();
         Vec3i south = Direction.SOUTH.getUnitVec3i();
 
-        Path[] westPaths = new Path[]{
+        Path[] curveSouthEast = new Path[]{
                 new Path(
                         new Vec3[]{
-                                new Vec3(-0.15625, 0.1, 0.5),
-                                new Vec3(-0.15625, 0.1, -0.5)
-                        },
-                        south,
-                        north
-                ),
-                new Path(
-                        new Vec3[]{
-                                new Vec3(0.15625, 0.1, 0.5),
-                                new Vec3(0.15, 0.1, 0.4),
-                                new Vec3(0.25, 0.1, 0.25),
-                                new Vec3(0.4, 0.1, 0.15),
-                                new Vec3(0.5, 0.1, 0.15625)
+                                new Vec3(-0.03125, 0.1, 0.5),
+                                new Vec3(-0.013148, 0.1, 0.362502),
+                                new Vec3(0.039924, 0.1, 0.234375),
+                                new Vec3(0.12435, 0.1, 0.12435),
+                                new Vec3(0.234375, 0.1, 0.039924),
+                                new Vec3(0.362502, 0.1, -0.013148),
+                                new Vec3(0.5, 0.1, -0.03125)
                         },
                         south,
                         east
                 ),
                 new Path(
                         new Vec3[]{
-                                new Vec3(0.5, 0.1, -0.15625),
-                                new Vec3(0.4, 0.1, -0.15),
-                                new Vec3(0.25, 0.1, -0.25),
-                                new Vec3(0.15, 0.1, -0.4),
-                                new Vec3(0.15625, 0.1, -0.5)
+                                new Vec3(0.28125, 0.1, 0.5),
+                                new Vec3(0.297901, 0.1, 0.416288),
+                                new Vec3(0.34532, 0.1, 0.34532),
+                                new Vec3(0.416288, 0.1, 0.297901),
+                                new Vec3(0.5, 0.1, 0.28125)
                         },
-                        east,
-                        north
+                        south,
+                        east
                 )
         };
 
         return ImmutableMap.of(
                 Direction.EAST,
-                rotatePaths(westPaths, 2),
-                Direction.WEST,
-                westPaths,
-                Direction.NORTH,
-                rotatePaths(westPaths, 1),
+                rotatePaths(curveSouthEast, 1),
                 Direction.SOUTH,
-                rotatePaths(westPaths, 3)
+                rotatePaths(curveSouthEast, 2),
+                Direction.WEST,
+                rotatePaths(curveSouthEast, 3),
+                Direction.NORTH,
+                curveSouthEast
         );
     }));
 

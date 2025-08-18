@@ -40,15 +40,15 @@ public class HalfRampTrackBlock extends AbstractTrackBlock {
     }
 
     @Override
-    protected @NotNull MapCodec<? extends AbstractTrackBlock> codec() {
+    protected @NotNull MapCodec<HalfRampTrackBlock> codec() {
         return CODEC;
     }
 
     @Override
     protected @NotNull VoxelShape getShape(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos, CollisionContext collisionContext) {
         return blockState.getValue(HALF) == Half.BOTTOM ?
-                SHAPE_SLOPE :
-                SHAPE_SLOPE_TOP;
+                SHAPE_BOTTOM_HALF :
+                SHAPE_TOP_HALF;
     }
 
     @Override
@@ -74,6 +74,9 @@ public class HalfRampTrackBlock extends AbstractTrackBlock {
     protected @NotNull InteractionResult useItemOn(
             ItemStack itemStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand interactionHand, BlockHitResult blockHitResult
     ) {
+        if (!player.getAbilities().mayBuild)
+            return InteractionResult.PASS;
+
         if (blockHitResult.getDirection() != Direction.UP || blockState.getValue(HALF) != Half.BOTTOM)
             return InteractionResult.TRY_WITH_EMPTY_HAND;
 

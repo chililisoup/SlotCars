@@ -32,7 +32,7 @@ public class DoubleCornerTrackBlock extends AbstractTrackBlock {
     }
 
     @Override
-    protected @NotNull MapCodec<? extends AbstractTrackBlock> codec() {
+    protected @NotNull MapCodec<DoubleCornerTrackBlock> codec() {
         return CODEC;
     }
 
@@ -59,10 +59,12 @@ public class DoubleCornerTrackBlock extends AbstractTrackBlock {
                 new Path(
                         new Vec3[]{
                                 new Vec3(-0.15625, 0.1, 0.5),
-                                new Vec3(-0.15, 0.1, 0.375),
-                                new Vec3(-0.0625, 0.1, 0.125),
-                                new Vec3(0.125, 0.1, -0.0625),
-                                new Vec3(0.375, 0.1, -0.15),
+                                new Vec3(-0.139796, 0.1, 0.353971),
+                                new Vec3(-0.091261, 0.1, 0.215264),
+                                new Vec3(-0.013077, 0.1, 0.090835),
+                                new Vec3(0.090835, 0.1, -0.013077),
+                                new Vec3(0.215264, 0.1, -0.091261),
+                                new Vec3(0.353971, 0.1, -0.139796),
                                 new Vec3(0.5, 0.1, -0.15625)
                         },
                         south,
@@ -71,9 +73,10 @@ public class DoubleCornerTrackBlock extends AbstractTrackBlock {
                 new Path(
                         new Vec3[]{
                                 new Vec3(0.15625, 0.1, 0.5),
-                                new Vec3(0.15, 0.1, 0.4),
-                                new Vec3(0.25, 0.1, 0.25),
-                                new Vec3(0.4, 0.1, 0.15),
+                                new Vec3(0.173074, 0.1, 0.393775),
+                                new Vec3(0.2219, 0.1, 0.297949),
+                                new Vec3(0.297949, 0.1, 0.2219),
+                                new Vec3(0.393775, 0.1, 0.173074),
                                 new Vec3(0.5, 0.1, 0.15625)
                         },
                         south,

@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=east,inverted=false": {
+      "model": "slotcars:block/track_chicane_left",
+      "y": 90
+    },
+    "facing=north,inverted=false": {
+      "model": "slotcars:block/track_chicane_left"
+    },
+    "facing=south,inverted=false": {
+      "model": "slotcars:block/track_chicane_left",
+      "y": 180
+    },
+    "facing=west,inverted=false": {
+      "model": "slotcars:block/track_chicane_left",
+      "y": 270
+    },
+    "facing=east,inverted=true": {
+      "model": "slotcars:block/track_chicane_right",
+      "y": 90
+    },
+    "facing=north,inverted=true": {
+      "model": "slotcars:block/track_chicane_right"
+    },
+    "facing=south,inverted=true": {
+      "model": "slotcars:block/track_chicane_right",
+      "y": 180
+    },
+    "facing=west,inverted=true": {
+      "model": "slotcars:block/track_chicane_right",
+      "y": 270
+    }
+  }
+}

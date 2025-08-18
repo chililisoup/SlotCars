@@ -19,8 +19,8 @@ public abstract class AbstractTrackBlock extends Block {
     public static final Pair<BlockPos, Path> EMPTY_TRACK = Pair.of(BlockPos.ZERO, Path.EMPTY);
 
     protected static final VoxelShape SHAPE_FLAT = Block.column(16.0, 0.0, 2.0);
-    protected static final VoxelShape SHAPE_SLOPE = Block.column(16.0, 0.0, 8.0);
-    protected static final VoxelShape SHAPE_SLOPE_TOP = Block.column(16.0, 8.0, 16.0);
+    protected static final VoxelShape SHAPE_BOTTOM_HALF = Block.column(16.0, 0.0, 8.0);
+    protected static final VoxelShape SHAPE_TOP_HALF = Block.column(16.0, 8.0, 16.0);
 
     protected AbstractTrackBlock(Properties properties) {
         super(properties);
@@ -37,7 +37,47 @@ public abstract class AbstractTrackBlock extends Block {
     @Override
     protected abstract @NotNull MapCodec<? extends AbstractTrackBlock> codec();
 
+    public boolean canDerail() {
+        return true;
+    }
+
+    public boolean isLoop() {
+        return false;
+    }
+
     public abstract Path[] getPaths(BlockState blockState);
+
+    public static Path[] multiplyPaths(Path[] paths, Vec3i multiplier) {
+        Path[] multiplied = new Path[paths.length];
+
+        for (int i = 0; i < paths.length; i++) {
+            Path path = paths[i];
+            Vec3[] points = path.points;
+            Vec3[] multipliedPoints = new Vec3[points.length];
+            Vec3i entrance = path.entrance;
+            Vec3i exit = path.exit;
+            Vec3 vec3Multiplier = new Vec3(multiplier);
+
+            entrance = new Vec3i(
+                    entrance.getX() * multiplier.getX(),
+                    entrance.getY() * multiplier.getY(),
+                    entrance.getZ() * multiplier.getZ()
+            );
+
+            exit = new Vec3i(
+                    exit.getX() * multiplier.getX(),
+                    exit.getY() * multiplier.getY(),
+                    exit.getZ() * multiplier.getZ()
+            );
+
+            for (int j = 0; j < points.length; j++)
+                multipliedPoints[j] = points[j].multiply(vec3Multiplier);
+
+            multiplied[i] = new Path(multipliedPoints, entrance, exit);
+        }
+
+        return multiplied;
+    }
 
     public static Path[] rotatePaths(Path[] paths, int clockwiseTurns) {
         Path[] rotated = new Path[paths.length];

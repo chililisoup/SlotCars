@@ -15,5 +15,17 @@
   "block.slotcars.hairpin_track": "Slot Car Hairpin Track",
   "item.slotcars.hairpin_track": "Slot Car Hairpin Track",
   "block.slotcars.half_ramp_track": "Slot Car Half Ramp Track",
-  "item.slotcars.half_ramp_track": "Slot Car Half Ramp Track"
+  "item.slotcars.half_ramp_track": "Slot Car Half Ramp Track",
+  "block.slotcars.loop_track": "Slot Car Loop Track",
+  "item.slotcars.loop_track": "Slot Car Loop Track",
+  "block.slotcars.chicane_track": "Slot Car Chicane Track",
+  "item.slotcars.chicane_track": "Slot Car Chicane Track",
+  "block.slotcars.full_chicane_track": "Slot Car Full Chicane Track",
+  "item.slotcars.full_chicane_track": "Slot Car Full Chicane Track",
+  "block.slotcars.side_track": "Slot Car Side Track",
+  "item.slotcars.side_track": "Slot Car Side Track",
+  "block.slotcars.wide_corner_track": "Slot Car Wide Corner Track",
+  "item.slotcars.wide_corner_track": "Slot Car Wide Corner Track",
+  "block.slotcars.tight_corner_track": "Slot Car Tight Corner Track",
+  "item.slotcars.tight_corner_track": "Slot Car Tight Corner Track"
 }

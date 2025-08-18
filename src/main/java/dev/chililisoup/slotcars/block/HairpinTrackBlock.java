@@ -31,7 +31,7 @@ public class HairpinTrackBlock extends AbstractTrackBlock {
     }
 
     @Override
-    protected @NotNull MapCodec<? extends AbstractTrackBlock> codec() {
+    protected @NotNull MapCodec<HairpinTrackBlock> codec() {
         return CODEC;
     }
 

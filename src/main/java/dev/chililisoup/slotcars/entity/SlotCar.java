@@ -29,6 +29,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.DyedItemColor;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -43,6 +44,7 @@ public class SlotCar extends Entity implements TraceableEntity {
             builder -> builder.initializer(SlotCarHolder::new).copyOnDeath()
     );
     private static final EntityDataAccessor<Integer> DATA_COLOR = SynchedEntityData.defineId(SlotCar.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Float> DATA_X_ROT_OVERRIDE = SynchedEntityData.defineId(SlotCar.class, EntityDataSerializers.FLOAT);
     private static final int DEFAULT_COLOR = -11430696;
     private static final double ACCELERATION = 0.9375;
     private static final double LN_ACCELERATION = Math.log(ACCELERATION);
@@ -144,6 +146,16 @@ public class SlotCar extends Entity implements TraceableEntity {
 
     public int getColor() {
         return this.getEntityData().get(DATA_COLOR);
+    }
+
+    @Override
+    public float getXRot() {
+        float override = this.getEntityData().get(DATA_X_ROT_OVERRIDE);
+        return override == 0F ? super.getXRot() : override;
+    }
+
+    public void setXRotOverride(float override) {
+        this.getEntityData().set(DATA_X_ROT_OVERRIDE, override);
     }
 
     public boolean isDerailed() {
@@ -325,20 +337,23 @@ public class SlotCar extends Entity implements TraceableEntity {
 
             maintainedSpeed = deltaMovement.normalize().dot(pathVector);
             if (powered) {
-                Vec3 xzMotion = deltaMovement.multiply(1, 0, 1);
-                double xzLength = xzMotion.length();
+                Block block = this.level().getBlockState(this.currentTrack.getFirst()).getBlock();
+                if (block instanceof AbstractTrackBlock trackBlock && trackBlock.canDerail()) {
+                    Vec3 xzMotion = deltaMovement.multiply(1, 0, 1);
+                    double xzLength = xzMotion.length();
 
-                if (xzLength > 0) {
-                    double harshness = (1 - Math.abs(xzMotion.normalize()
-                            .dot(pathVector.multiply(1, 0, 1).normalize())
-                    )) * xzLength;
+                    if (xzLength > 0) {
+                        double harshness = (1 - Math.abs(xzMotion.normalize()
+                                .dot(pathVector.multiply(1, 0, 1).normalize())
+                        )) * xzLength;
 
-                    if (harshness > this.maxHarshness()) {
-                        this.derail();
-                        deltaMovement = deltaMovement.scale(0.75).add(0, 0.15, 0);
-                        currentPos = currentPos.add(deltaMovement);
-                        elapsedTick = 1;
-                        break;
+                        if (harshness > this.maxHarshness()) {
+                            this.derail();
+                            deltaMovement = deltaMovement.scale(0.75).add(0, 0.15, 0);
+                            currentPos = currentPos.add(deltaMovement);
+                            elapsedTick = 1;
+                            break;
+                        }
                     }
                 }
 
@@ -389,8 +404,15 @@ public class SlotCar extends Entity implements TraceableEntity {
                         currentPos
                 ).subtract(this.position());
 
-        if (!this.onTrack()) this.noPhysics = false;
         this.setLookVector(pathVector.lerp(this.getLookAngle().normalize(), 0.375));
+        if (this.currentTrack != null) {
+            Block block = this.level().getBlockState(this.currentTrack.getFirst()).getBlock();
+            if (block instanceof AbstractTrackBlock trackBlock && trackBlock.isLoop()) {
+                this.setLookVector(new Vec3(this.currentTrack.getSecond().exit()));
+                float loopProgress = (float) exitsIndex / ((float) this.currentTrack.getSecond().points().length - 2);
+                this.setXRotOverride(loopProgress * -360F);
+            } else this.setXRotOverride(0F);
+        } else this.noPhysics = false;
         this.move(MoverType.SELF, totalDeltaMovement);
         this.setDeltaMovement(deltaMovement);
     }
@@ -549,6 +571,7 @@ public class SlotCar extends Entity implements TraceableEntity {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(DATA_COLOR, DEFAULT_COLOR);
+        builder.define(DATA_X_ROT_OVERRIDE, 0F);
     }
 
     @Override

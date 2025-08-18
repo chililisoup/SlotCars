@@ -4,6 +4,12 @@
     "slotcars:t_intersection_track",
     "slotcars:double_corner_track",
     "slotcars:hairpin_track",
-    "slotcars:half_ramp_track"
+    "slotcars:half_ramp_track",
+    "slotcars:loop_track",
+    "slotcars:chicane_track",
+    "slotcars:full_chicane_track",
+    "slotcars:side_track",
+    "slotcars:wide_corner_track",
+    "slotcars:tight_corner_track"
   ]
 }
