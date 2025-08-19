@@ -535,7 +535,7 @@ public class SlotCar extends Entity implements TraceableEntity {
     public void recreateFromPacket(ClientboundAddEntityPacket packet) {
         super.recreateFromPacket(packet);
         Vec3 vec3 = this.getDeltaMovement();
-        this.lerpMotion(vec3.x, vec3.y, vec3.z);
+        super.lerpMotion(vec3.x, vec3.y, vec3.z);
 
         Entity entity = this.level().getEntity(packet.getData());
         if (entity instanceof Player player) {
@@ -566,6 +566,12 @@ public class SlotCar extends Entity implements TraceableEntity {
     @Override
     protected Entity.@NotNull MovementEmission getMovementEmission() {
         return Entity.MovementEmission.EVENTS;
+    }
+
+    @Override
+    public void lerpMotion(double x, double y, double z) {
+        if (this.isLocalClientAuthoritative()) return;
+        super.lerpMotion(x, y, z);
     }
 
     @Override
