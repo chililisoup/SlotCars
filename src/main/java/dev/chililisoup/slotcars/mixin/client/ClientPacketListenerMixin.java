@@ -31,27 +31,46 @@ public abstract class ClientPacketListenerMixin {
     }
 
     @Unique private boolean slotCars$shouldTossPacket(int id) {
-        return this.slotCars$shouldTossPacket(((ClientPacketListener) (Object) this).getLevel().getEntity(id));
+        Level level = ((ClientPacketListener) (Object) this).getLevel();
+        if (level == null) return false;
+        return this.slotCars$shouldTossPacket(level.getEntity(id));
     }
 
     @Unique private boolean slotCars$shouldTossPacket(Function<Level, Entity> entitySupplier) {
+        if (entitySupplier == null) return false;
         Level level = ((ClientPacketListener) (Object) this).getLevel();
+        if (level == null) return false;
         return this.slotCars$shouldTossPacket(entitySupplier.apply(level));
     }
 
-    @Inject(method = "handleMoveEntity", at = @At(value = "HEAD"), cancellable = true)
+    @Inject(method = "handleMoveEntity", at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/util/thread/BlockableEventLoop;)V",
+            shift = At.Shift.AFTER),
+            cancellable = true
+    )
     private void tossMoveSync(ClientboundMoveEntityPacket clientboundMoveEntityPacket, CallbackInfo ci) {
         if (slotCars$shouldTossPacket(clientboundMoveEntityPacket::getEntity))
             ci.cancel();
     }
 
-    @Inject(method = "handleEntityPositionSync", at = @At(value = "HEAD"), cancellable = true)
+    @Inject(method = "handleEntityPositionSync", at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/util/thread/BlockableEventLoop;)V",
+            shift = At.Shift.AFTER),
+            cancellable = true
+    )
     private void checkPositionSync(ClientboundEntityPositionSyncPacket clientboundEntityPositionSyncPacket, CallbackInfo ci) {
         if (slotCars$shouldTossPacket(clientboundEntityPositionSyncPacket.id()))
             ci.cancel();
     }
 
-    @Inject(method = "handleSetEntityMotion", at = @At(value = "HEAD"), cancellable = true)
+    @Inject(method = "handleSetEntityMotion", at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/util/thread/BlockableEventLoop;)V",
+            shift = At.Shift.AFTER),
+            cancellable = true
+    )
     private void tossMotionSync(ClientboundSetEntityMotionPacket clientboundSetEntityMotionPacket, CallbackInfo ci) {
         if (slotCars$shouldTossPacket(clientboundSetEntityMotionPacket.getId()))
             ci.cancel();
